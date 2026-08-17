@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, ChangeEvent, useState } from "react";
+import { FormEvent, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
@@ -35,7 +35,7 @@ export default function RegisterPage() {
 
         try {
             const response = await fetch(
-                "http://localhost:8080/api/auth/register",
+                "http://localhost:8080/auth/register",
                 {
                     method: "POST",
                     headers: {
