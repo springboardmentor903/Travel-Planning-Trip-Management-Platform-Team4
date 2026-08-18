@@ -1,0 +1,239 @@
+{
+	"info": {
+		"_postman_id": "b1c2d3e4-5678-90ab-cdef-1234567890ab",
+		"name": "TripNest - Itinerary API Collection",
+		"description": "Dedicated Postman collection for testing ItineraryDay endpoints in the TripNest platform.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"auth": {
+		"type": "bearer",
+		"bearer": [
+			{
+				"key": "token",
+				"value": "{{token}}",
+				"type": "string"
+			}
+		]
+	},
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:8080",
+			"type": "string"
+		},
+		{
+			"key": "token",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "trip_id",
+			"value": "1",
+			"type": "string"
+		},
+		{
+			"key": "day_id",
+			"value": "1",
+			"type": "string"
+		}
+	],
+	"item": [
+		{
+			"name": "Create Itinerary Day",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 201 Created\", function () {",
+							"    pm.response.to.have.status(201);",
+							"});",
+							"pm.test(\"Store created Day ID\", function () {",
+							"    var jsonData = pm.response.json();",
+							"    pm.expect(jsonData).to.have.property('id');",
+							"    if (jsonData.id) {",
+							"        pm.collectionVariables.set(\"day_id\", jsonData.id.toString());",
+							"        pm.environment.set(\"day_id\", jsonData.id.toString());",
+							"    }",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"dayNumber\": 1,\n  \"date\": \"2026-09-01\",\n  \"title\": \"Day 1 Arrival & Exploration\",\n  \"description\": \"Arrive at destination, hotel check-in, and local sightseeing.\"\n}"
+				},
+				"url": {
+					"raw": "{{base_url}}/api/trips/{{trip_id}}/itineraries",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"trips",
+						"{{trip_id}}",
+						"itineraries"
+					]
+				},
+				"description": "POST /api/trips/{tripId}/itineraries - Creates an itinerary day for a specific trip."
+			},
+			"response": []
+		},
+		{
+			"name": "Get Trip Itineraries",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200 OK\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"pm.test(\"Response is an array\", function () {",
+							"    var jsonData = pm.response.json();",
+							"    pm.expect(Array.isArray(jsonData)).to.be.true;",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/api/trips/{{trip_id}}/itineraries",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"trips",
+						"{{trip_id}}",
+						"itineraries"
+					]
+				},
+				"description": "GET /api/trips/{tripId}/itineraries - Retrieves all itinerary days for a specific trip."
+			},
+			"response": []
+		},
+		{
+			"name": "Get Single Itinerary Day",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200 OK\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/api/itineraries/{{day_id}}",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"itineraries",
+						"{{day_id}}"
+					]
+				},
+				"description": "GET /api/itineraries/{dayId} - Retrieves an itinerary day by ID."
+			},
+			"response": []
+		},
+		{
+			"name": "Update Itinerary Day",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200 OK\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "PUT",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"dayNumber\": 1,\n  \"date\": \"2026-09-01\",\n  \"title\": \"Updated Day 1 Arrival & Welcome Dinner\",\n  \"description\": \"Arrive at destination, hotel check-in, and evening dinner.\"\n}"
+				},
+				"url": {
+					"raw": "{{base_url}}/api/itineraries/{{day_id}}",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"itineraries",
+						"{{day_id}}"
+					]
+				},
+				"description": "PUT /api/itineraries/{dayId} - Updates an existing itinerary day."
+			},
+			"response": []
+		},
+		{
+			"name": "Delete Itinerary Day",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 204 No Content\", function () {",
+							"    pm.response.to.have.status(204);",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "DELETE",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/api/itineraries/{{day_id}}",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"itineraries",
+						"{{day_id}}"
+					]
+				},
+				"description": "DELETE /api/itineraries/{dayId} - Deletes an itinerary day by ID."
+			},
+			"response": []
+		}
+	]
+}
