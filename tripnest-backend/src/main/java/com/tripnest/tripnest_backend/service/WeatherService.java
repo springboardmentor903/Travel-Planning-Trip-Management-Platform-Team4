@@ -5,10 +5,12 @@ import com.tripnest.tripnest_backend.entity.Destination;
 import com.tripnest.tripnest_backend.exception.ExternalServiceException;
 import com.tripnest.tripnest_backend.exception.ResourceNotFoundException;
 import com.tripnest.tripnest_backend.repository.DestinationRepository;
-import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
 
@@ -16,17 +18,30 @@ import java.util.List;
 import java.util.Map;
 
 @Service
-@RequiredArgsConstructor
 public class WeatherService {
 
     private final DestinationRepository destinationRepository;
+    private final RestTemplate restTemplate;
 
-    @Value("${weather.api.key:}")
-    private String weatherApiKey;
+    @Value("${openweather.api.key:${weather.api.key:}}")
+    private String apiKey;
 
-    @Value("${weather.api.url:https://api.openweathermap.org/data/2.5/weather}")
-    private String weatherApiUrl;
+    @Value("${openweather.api.url:${weather.api.url:https://api.openweathermap.org/data/2.5/weather}}")
+    private String apiUrl;
 
+    public WeatherService(DestinationRepository destinationRepository, @Autowired(required = false) RestTemplate restTemplate) {
+        this.destinationRepository = destinationRepository;
+        if (restTemplate != null) {
+            this.restTemplate = restTemplate;
+        } else {
+            SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
+            factory.setConnectTimeout(5000);
+            factory.setReadTimeout(5000);
+            this.restTemplate = new RestTemplate(factory);
+        }
+    }
+
+    @Transactional(readOnly = true)
     public WeatherResponse getWeatherForDestination(Integer destinationId) {
         if (destinationId == null || destinationId <= 0) {
             throw new IllegalArgumentException("Destination ID must be a positive integer");
@@ -35,49 +50,62 @@ public class WeatherService {
         Destination destination = destinationRepository.findById(destinationId)
                 .orElseThrow(() -> new ResourceNotFoundException("Destination not found with id: " + destinationId));
 
-        if (weatherApiKey == null || weatherApiKey.trim().isEmpty()) {
+        if (apiKey == null || apiKey.trim().isEmpty()) {
             throw new ExternalServiceException("Weather service API key is not configured on the backend. Please set the WEATHER_API_KEY environment variable.");
         }
 
-        String locationQuery = destination.getCity() != null && !destination.getCity().trim().isEmpty()
-                ? destination.getCity()
-                : destination.getName();
+        String requestUrl;
+
+        if (destination.getLatitude() != null && destination.getLongitude() != null) {
+            requestUrl = UriComponentsBuilder.fromUriString(apiUrl)
+                    .queryParam("lat", destination.getLatitude())
+                    .queryParam("lon", destination.getLongitude())
+                    .queryParam("appid", apiKey)
+                    .queryParam("units", "metric")
+                    .toUriString();
+        } else {
+            String queryLocation = (destination.getCity() != null && !destination.getCity().trim().isEmpty())
+                    ? destination.getCity()
+                    : destination.getName();
+
+            requestUrl = UriComponentsBuilder.fromUriString(apiUrl)
+                    .queryParam("q", queryLocation)
+                    .queryParam("appid", apiKey)
+                    .queryParam("units", "metric")
+                    .toUriString();
+        }
 
         try {
-            SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
-            factory.setConnectTimeout(5000);
-            factory.setReadTimeout(5000);
-            RestTemplate restTemplate = new RestTemplate(factory);
-
-            String url = UriComponentsBuilder.fromUriString(weatherApiUrl)
-                    .queryParam("q", locationQuery)
-                    .queryParam("units", "metric")
-                    .queryParam("appid", weatherApiKey)
-                    .toUriString();
-
             @SuppressWarnings("unchecked")
-            Map<String, Object> response = restTemplate.getForObject(url, Map.class);
+            Map<String, Object> response = restTemplate.getForObject(requestUrl, Map.class);
 
             if (response == null) {
-                throw new ExternalServiceException("Received empty response from weather provider");
+                throw new IllegalArgumentException("Empty response received from OpenWeather API");
             }
 
-            return mapToWeatherResponse(locationQuery, response);
+            return mapToWeatherResponse(destination.getName(), response);
         } catch (ExternalServiceException ex) {
             throw ex;
+        } catch (RestClientException ex) {
+            throw new IllegalArgumentException("Unable to fetch weather data from OpenWeather API: " + ex.getMessage(), ex);
         } catch (Exception ex) {
-            throw new ExternalServiceException("Unable to fetch live weather data for " + locationQuery + ": " + ex.getMessage(), ex);
+            throw new IllegalArgumentException("Unable to fetch weather data: " + ex.getMessage(), ex);
         }
     }
 
     @SuppressWarnings("unchecked")
-    private WeatherResponse mapToWeatherResponse(String locationQuery, Map<String, Object> body) {
+    private WeatherResponse mapToWeatherResponse(String destinationName, Map<String, Object> body) {
+        if (body == null) {
+            throw new IllegalArgumentException("Empty response received from OpenWeather API");
+        }
+
         Double temp = null;
         Double feelsLike = null;
         Integer humidity = null;
         Double windSpeed = null;
         String condition = "Unknown";
-        String icon = null;
+        String description = "No description available";
+        String icon = "01d";
 
         if (body.containsKey("main") && body.get("main") instanceof Map<?, ?> mainMap) {
             temp = getAsDouble(mainMap.get("temp"));
@@ -94,6 +122,9 @@ public class WeatherService {
                 if (wMap.get("main") != null) {
                     condition = String.valueOf(wMap.get("main"));
                 }
+                if (wMap.get("description") != null) {
+                    description = String.valueOf(wMap.get("description"));
+                }
                 if (wMap.get("icon") != null) {
                     icon = String.valueOf(wMap.get("icon"));
                 }
@@ -101,12 +132,14 @@ public class WeatherService {
         }
 
         return new WeatherResponse(
-                locationQuery,
-                temp,
-                feelsLike,
+                destinationName,
+                destinationName,
+                temp != null ? temp : 0.0,
+                feelsLike != null ? feelsLike : 0.0,
+                humidity != null ? humidity : 0,
                 condition,
-                humidity,
-                windSpeed,
+                description,
+                windSpeed != null ? windSpeed : 0.0,
                 icon
         );
     }

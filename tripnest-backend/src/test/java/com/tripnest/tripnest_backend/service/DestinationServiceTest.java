@@ -48,6 +48,17 @@ class DestinationServiceTest {
     }
 
     @Test
+    void testGetPopularDestinations() {
+        when(destinationRepository.findPopularDestinations()).thenReturn(List.of(destination1, destination2));
+
+        List<DestinationResponse> result = destinationService.getPopularDestinations();
+
+        assertEquals(2, result.size());
+        assertEquals("Paris", result.get(0).getName());
+        verify(destinationRepository, times(1)).findPopularDestinations();
+    }
+
+    @Test
     void testGetDestinationById_ValidId() {
         when(destinationRepository.findById(1)).thenReturn(Optional.of(destination1));
 

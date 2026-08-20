@@ -27,6 +27,12 @@ public class DestinationController {
         return ResponseEntity.ok(destinations);
     }
 
+    @GetMapping("/popular")
+    public ResponseEntity<List<DestinationResponse>> getPopularDestinations() {
+        List<DestinationResponse> popularDestinations = destinationService.getPopularDestinations();
+        return ResponseEntity.ok(popularDestinations);
+    }
+
     @GetMapping("/{id}")
     public ResponseEntity<DestinationResponse> getDestinationById(@PathVariable Integer id) {
         DestinationResponse destination = destinationService.getDestinationById(id);
