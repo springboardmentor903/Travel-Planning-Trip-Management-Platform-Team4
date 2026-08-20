@@ -7,23 +7,93 @@ export type User = {
 export type Destination = {
   id: number;
   name: string;
-  description: string | null;
-  location: string | null;
   country: string | null;
   city: string | null;
+  description: string | null;
   imageUrl: string | null;
-  createdAt: string | null;
+  category?: string | null;
+  location?: string | null;
+  createdAt?: string | null;
 };
 
 export type Trip = {
   id: number;
   title: string;
-  description: string | null;
+  userId: number;
+  userEmail?: string;
+  destination: Destination;
   startDate: string;
   endDate: string;
-  budget: number | null;
-  userId: number;
-  userName: string;
-  destination: Destination;
-  createdAt: string | null;
+  budget?: number | null;
+  notes?: string | null;
+  createdAt?: string | null;
+};
+
+export type CreateTripRequest = {
+  title: string;
+  destinationId: number;
+  startDate: string;
+  endDate: string;
+  budget?: number | null;
+  notes?: string | null;
+};
+
+export type UpdateTripRequest = CreateTripRequest;
+
+export type ItineraryDay = {
+  id: number;
+  tripId: number;
+  dayNumber: number;
+  date: string | null;
+  title: string;
+  description: string | null;
+};
+
+export type CreateItineraryDayRequest = {
+  dayNumber: number;
+  date?: string | null;
+  title: string;
+  description?: string | null;
+};
+
+export type UpdateItineraryDayRequest = CreateItineraryDayRequest;
+
+export type Activity = {
+  id: number;
+  itineraryDayId: number;
+  name: string;
+  description: string | null;
+  location: string | null;
+  startTime: string | null;
+  endTime: string | null;
+};
+
+export type CreateActivityRequest = {
+  name: string;
+  description?: string | null;
+  location?: string | null;
+  startTime?: string | null;
+  endTime?: string | null;
+};
+
+export type UpdateActivityRequest = CreateActivityRequest;
+
+export type WeatherInfo = {
+  temperature: number;
+  condition: string;
+  feelsLike?: number;
+  humidity?: number;
+  windSpeed?: number;
+  icon?: string;
+  locationName?: string;
+};
+
+export type PlaceInfo = {
+  id: string;
+  name: string;
+  category?: string;
+  address?: string;
+  rating?: number;
+  userRatingsTotal?: number;
+  photoUrl?: string;
 };
