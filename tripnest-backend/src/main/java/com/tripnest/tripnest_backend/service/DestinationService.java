@@ -6,6 +6,7 @@ import com.tripnest.tripnest_backend.exception.ResourceNotFoundException;
 import com.tripnest.tripnest_backend.repository.DestinationRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -15,12 +16,14 @@ public class DestinationService {
 
     private final DestinationRepository destinationRepository;
 
+    @Transactional(readOnly = true)
     public List<DestinationResponse> getAllDestinations() {
         return destinationRepository.findAll().stream()
                 .map(this::mapToResponse)
                 .toList();
     }
 
+    @Transactional(readOnly = true)
     public DestinationResponse getDestinationById(Integer id) {
         if (id == null || id <= 0) {
             throw new IllegalArgumentException("Destination ID must be a positive integer");
@@ -28,6 +31,14 @@ public class DestinationService {
         Destination destination = destinationRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Destination not found with id: " + id));
         return mapToResponse(destination);
+    }
+
+    @Transactional(readOnly = true)
+    public List<DestinationResponse> getPopularDestinations() {
+        List<Destination> popularDestinations = destinationRepository.findPopularDestinations();
+        return popularDestinations.stream()
+                .map(this::mapToResponse)
+                .toList();
     }
 
     private DestinationResponse mapToResponse(Destination destination) {
@@ -38,7 +49,9 @@ public class DestinationService {
                 destination.getCity(),
                 destination.getDescription(),
                 destination.getImageUrl(),
-                destination.getCategory()
+                destination.getCategory(),
+                destination.getLatitude(),
+                destination.getLongitude()
         );
     }
 }

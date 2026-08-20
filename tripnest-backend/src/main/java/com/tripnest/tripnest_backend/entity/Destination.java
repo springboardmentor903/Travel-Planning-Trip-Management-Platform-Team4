@@ -31,4 +31,18 @@ public class Destination {
     private String imageUrl;
 
     private String category;
+
+    private Double latitude;
+
+    private Double longitude;
+
+    public Destination(Integer id, String name, String country, String city, String description, String imageUrl, String category) {
+        this.id = id;
+        this.name = name;
+        this.country = country;
+        this.city = city;
+        this.description = description;
+        this.imageUrl = imageUrl;
+        this.category = category;
+    }
 }
