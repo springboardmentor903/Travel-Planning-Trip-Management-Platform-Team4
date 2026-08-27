@@ -1,13 +1,18 @@
 import type {
   Activity,
+  CategorySummary,
   CreateActivityRequest,
+  CreateExpenseRequest,
   CreateItineraryDayRequest,
   CreateTripRequest,
   Destination,
+  Expense,
   ItineraryDay,
   PlaceInfo,
+  RemainingBudget,
   Trip,
   UpdateActivityRequest,
+  UpdateExpenseRequest,
   UpdateItineraryDayRequest,
   UpdateTripRequest,
   WeatherInfo,
@@ -179,3 +184,52 @@ export async function deleteActivity(
     method: "DELETE",
   });
 }
+
+/* --- Expense Helper APIs --- */
+
+export async function createExpense(
+  tripId: number | string,
+  data: CreateExpenseRequest
+): Promise<Expense> {
+  return apiFetch<Expense>(`/trips/${tripId}/expenses`, {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function getExpenses(tripId: number | string): Promise<Expense[]> {
+  return apiFetch<Expense[]>(`/trips/${tripId}/expenses`);
+}
+
+export async function updateExpense(
+  tripId: number | string,
+  expenseId: number | string,
+  data: UpdateExpenseRequest
+): Promise<Expense> {
+  return apiFetch<Expense>(`/trips/${tripId}/expenses/${expenseId}`, {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function deleteExpense(
+  tripId: number | string,
+  expenseId: number | string
+): Promise<void> {
+  return apiFetch<void>(`/trips/${tripId}/expenses/${expenseId}`, {
+    method: "DELETE",
+  });
+}
+
+export async function getExpenseCategorySummary(
+  tripId: number | string
+): Promise<CategorySummary[]> {
+  return apiFetch<CategorySummary[]>(`/trips/${tripId}/expenses/summary`);
+}
+
+export async function getRemainingBudget(
+  tripId: number | string
+): Promise<RemainingBudget> {
+  return apiFetch<RemainingBudget>(`/trips/${tripId}/expenses/remaining-budget`);
+}
+

@@ -97,3 +97,46 @@ export type PlaceInfo = {
   userRatingsTotal?: number;
   photoUrl?: string;
 };
+
+export type ExpenseCategory =
+  | "TRANSPORTATION"
+  | "HOTEL"
+  | "FOOD"
+  | "SHOPPING"
+  | "ENTERTAINMENT"
+  | "MISCELLANEOUS";
+
+export type Expense = {
+  id: number;
+  tripId: number;
+  budgetId?: number | null;
+  payerId?: number | null;
+  payerName?: string | null;
+  category: ExpenseCategory;
+  amount: number;
+  date: string;
+  receiptLink?: string | null;
+  createdAt?: string | null;
+};
+
+export type CreateExpenseRequest = {
+  category: ExpenseCategory;
+  amount: number;
+  date: string;
+  receiptLink?: string | null;
+  payerId?: number | null;
+};
+
+export type UpdateExpenseRequest = CreateExpenseRequest;
+
+export type CategorySummary = {
+  category: ExpenseCategory;
+  totalAmount: number;
+};
+
+export type RemainingBudget = {
+  totalBudget: number;
+  totalExpenses: number;
+  remainingBudget: number;
+};
+

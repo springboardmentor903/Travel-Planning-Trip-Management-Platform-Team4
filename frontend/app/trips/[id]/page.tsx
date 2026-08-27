@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 import { deleteTrip, getTrip } from "../../../lib/api";
 import type { Trip } from "../../../lib/types";
 import ItinerarySection from "../../../components/trips/ItinerarySection";
+import ExpenseSection from "../../../components/trips/ExpenseSection";
 
 export default function TripDetailPage() {
   const params = useParams<{ id: string }>();
@@ -92,6 +93,9 @@ export default function TripDetailPage() {
             onEdit={() => router.push(`/trips/${trip.id}/edit`)}
             onDelete={() => setDeleteModalOpen(true)}
           />
+
+          {/* Budget & Expense Tracking Section */}
+          <ExpenseSection trip={trip} onTripUpdated={loadTrip} />
 
           {/* Full Day-by-Day Itinerary & Activity Section */}
           <ItinerarySection trip={trip} />
