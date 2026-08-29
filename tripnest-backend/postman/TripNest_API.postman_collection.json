@@ -32,6 +32,16 @@
 			"type": "string"
 		},
 		{
+			"key": "day_id",
+			"value": "1",
+			"type": "string"
+		},
+		{
+			"key": "activity_id",
+			"value": "1",
+			"type": "string"
+		},
+		{
 			"key": "user_id",
 			"value": "1",
 			"type": "string"
@@ -142,7 +152,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"email\": \"john.traveler@example.com\",\n  \"password\": \"password123\"\n}"
+							"raw": "{\n  \"email\": \"admin@tripnest.com\",\n  \"password\": \"Admin@123\"\n}"
 						},
 						"url": {
 							"raw": "{{base_url}}/api/auth/login",
@@ -205,6 +215,46 @@
 					"response": []
 				},
 				{
+					"name": "Get Popular Destinations",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200 OK\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"pm.test(\"Response is an array\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(Array.isArray(jsonData)).to.be.true;",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/destinations/popular",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"destinations",
+								"popular"
+							]
+						},
+						"description": "Fetches popular destinations ordered by trip bookings count (Public Endpoint)."
+					},
+					"response": []
+				},
+				{
 					"name": "Get Destination by ID",
 					"event": [
 						{
@@ -237,6 +287,48 @@
 							]
 						},
 						"description": "Fetches detailed information for a specific destination by ID (Public Endpoint)."
+					},
+					"response": []
+				},
+				{
+					"name": "Get Live Destination Weather",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200 OK\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"pm.test(\"Response contains temperature and condition\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.have.property('temperature');",
+									"    pm.expect(jsonData).to.have.property('condition');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/destinations/1/weather",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"destinations",
+								"1",
+								"weather"
+							]
+						},
+						"description": "Fetches live weather information for a specific destination by ID (Public Endpoint)."
 					},
 					"response": []
 				}
@@ -281,7 +373,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"title\": \"Paris Exploration Trip\",\n  \"description\": \"A 5-day sightseeing tour in Paris visiting historical landmarks and museums.\",\n  \"destinationId\": 1,\n  \"startDate\": \"2026-09-01\",\n  \"endDate\": \"2026-09-06\",\n  \"budget\": 1500.00\n}"
+							"raw": "{\n  \"title\": \"Paris Exploration Trip\",\n  \"notes\": \"A 5-day sightseeing tour in Paris visiting historical landmarks and museums.\",\n  \"destinationId\": 1,\n  \"startDate\": \"2026-09-01\",\n  \"endDate\": \"2026-09-06\",\n  \"budget\": 1500.00\n}"
 						},
 						"url": {
 							"raw": "{{base_url}}/api/trips",
@@ -320,14 +412,13 @@
 						"method": "GET",
 						"header": [],
 						"url": {
-							"raw": "{{base_url}}/api/trips/my",
+							"raw": "{{base_url}}/api/trips",
 							"host": [
 								"{{base_url}}"
 							],
 							"path": [
 								"api",
-								"trips",
-								"my"
+								"trips"
 							]
 						},
 						"description": "Retrieves all trips created by the currently authenticated user."
@@ -400,7 +491,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"title\": \"Updated Paris Exploration Trip\",\n  \"description\": \"Extended 7-day sightseeing tour in Paris including Versailles day trip.\",\n  \"destinationId\": 1,\n  \"startDate\": \"2026-09-01\",\n  \"endDate\": \"2026-09-08\",\n  \"budget\": 2000.00\n}"
+							"raw": "{\n  \"title\": \"Updated Paris Exploration Trip\",\n  \"notes\": \"Extended 7-day sightseeing tour in Paris including Versailles day trip.\",\n  \"destinationId\": 1,\n  \"startDate\": \"2026-09-01\",\n  \"endDate\": \"2026-09-08\",\n  \"budget\": 2000.00\n}"
 						},
 						"url": {
 							"raw": "{{base_url}}/api/trips/{{trip_id}}",
@@ -454,10 +545,99 @@
 			"description": "Endpoints for trip management (Requires JWT Authentication)."
 		},
 		{
-			"name": "4. Security & Role Tests",
+			"name": "4. Itineraries",
 			"item": [
 				{
-					"name": "Protected Endpoint Test",
+					"name": "Create Itinerary Day",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 201 Created\", function () {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"pm.test(\"Store created Day ID\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.have.property('id');",
+									"    if (jsonData.id) {",
+									"        pm.collectionVariables.set(\"day_id\", jsonData.id.toString());",
+									"        pm.environment.set(\"day_id\", jsonData.id.toString());",
+									"    }",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"dayNumber\": 1,\n  \"date\": \"2026-09-01\",\n  \"title\": \"Day 1 Arrival & Check-in\",\n  \"description\": \"Arrive at CDG airport, transfer to hotel, and explore local cafes.\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/trips/{{trip_id}}/itineraries",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"trips",
+								"{{trip_id}}",
+								"itineraries"
+							]
+						},
+						"description": "Creates an itinerary day for a specific trip."
+					},
+					"response": []
+				},
+				{
+					"name": "Get Trip Itineraries",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200 OK\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"pm.test(\"Response is an array\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(Array.isArray(jsonData)).to.be.true;",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/trips/{{trip_id}}/itineraries",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"trips",
+								"{{trip_id}}",
+								"itineraries"
+							]
+						},
+						"description": "Retrieves all itinerary days for a specific trip."
+					},
+					"response": []
+				},
+				{
+					"name": "Get Single Itinerary Day",
 					"event": [
 						{
 							"listen": "test",
@@ -475,22 +655,22 @@
 						"method": "GET",
 						"header": [],
 						"url": {
-							"raw": "{{base_url}}/api/test/protected",
+							"raw": "{{base_url}}/api/itineraries/{{day_id}}",
 							"host": [
 								"{{base_url}}"
 							],
 							"path": [
 								"api",
-								"test",
-								"protected"
+								"itineraries",
+								"{{day_id}}"
 							]
 						},
-						"description": "Tests access to generic protected endpoint."
+						"description": "Retrieves an itinerary day by ID."
 					},
 					"response": []
 				},
 				{
-					"name": "Traveler-Only Endpoint Test",
+					"name": "Update Itinerary Day",
 					"event": [
 						{
 							"listen": "test",
@@ -498,144 +678,6 @@
 								"exec": [
 									"pm.test(\"Status code is 200 OK\", function () {",
 									"    pm.response.to.have.status(200);",
-									"});"
-								],
-								"type": "text/javascript"
-							}
-						}
-					],
-					"request": {
-						"method": "GET",
-						"header": [],
-						"url": {
-							"raw": "{{base_url}}/api/test/traveler-only",
-							"host": [
-								"{{base_url}}"
-							],
-							"path": [
-								"api",
-								"test",
-								"traveler-only"
-							]
-						},
-						"description": "Tests access for TRAVELER role."
-					},
-					"response": []
-				},
-				{
-					"name": "Manager-Only Endpoint Test",
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"exec": [
-									"pm.test(\"Status code is 200 OK or 403 Forbidden\", function () {",
-									"    pm.expect(pm.response.code).to.be.oneOf([200, 403]);",
-									"});"
-								],
-								"type": "text/javascript"
-							}
-						}
-					],
-					"request": {
-						"method": "GET",
-						"header": [],
-						"url": {
-							"raw": "{{base_url}}/api/test/manager-only",
-							"host": [
-								"{{base_url}}"
-							],
-							"path": [
-								"api",
-								"test",
-								"manager-only"
-							]
-						},
-						"description": "Tests access for GROUP_ADMIN or ADMINISTRATOR roles."
-					},
-					"response": []
-				}
-			],
-			"description": "Security testing endpoints for verifying RBAC roles."
-		},
-		{
-			"name": "5. Admin Management",
-			"item": [
-				{
-					"name": "Admin Dashboard",
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"exec": [
-									"pm.test(\"Status code is 200 OK or 403 Forbidden\", function () {",
-									"    pm.expect(pm.response.code).to.be.oneOf([200, 403]);",
-									"});"
-								],
-								"type": "text/javascript"
-							}
-						}
-					],
-					"request": {
-						"method": "GET",
-						"header": [],
-						"url": {
-							"raw": "{{base_url}}/api/admin/dashboard",
-							"host": [
-								"{{base_url}}"
-							],
-							"path": [
-								"api",
-								"admin",
-								"dashboard"
-							]
-						},
-						"description": "Access admin dashboard (Requires ADMINISTRATOR role)."
-					},
-					"response": []
-				},
-				{
-					"name": "List All Users",
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"exec": [
-									"pm.test(\"Status code is 200 OK or 403 Forbidden\", function () {",
-									"    pm.expect(pm.response.code).to.be.oneOf([200, 403]);",
-									"});"
-								],
-								"type": "text/javascript"
-							}
-						}
-					],
-					"request": {
-						"method": "GET",
-						"header": [],
-						"url": {
-							"raw": "{{base_url}}/api/admin/users",
-							"host": [
-								"{{base_url}}"
-							],
-							"path": [
-								"api",
-								"admin",
-								"users"
-							]
-						},
-						"description": "Retrieves user summaries list (Requires ADMINISTRATOR role)."
-					},
-					"response": []
-				},
-				{
-					"name": "Update User Role",
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"exec": [
-									"pm.test(\"Status code is 200 OK or 403 Forbidden\", function () {",
-									"    pm.expect(pm.response.code).to.be.oneOf([200, 403]);",
 									"});"
 								],
 								"type": "text/javascript"
@@ -652,27 +694,232 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"roleName\": \"ADMINISTRATOR\"\n}"
+							"raw": "{\n  \"dayNumber\": 1,\n  \"date\": \"2026-09-01\",\n  \"title\": \"Updated Day 1 Arrival & Dinner\",\n  \"description\": \"Arrive at CDG airport, hotel check-in, and welcome dinner.\"\n}"
 						},
 						"url": {
-							"raw": "{{base_url}}/api/admin/users/{{user_id}}/role",
+							"raw": "{{base_url}}/api/itineraries/{{day_id}}",
 							"host": [
 								"{{base_url}}"
 							],
 							"path": [
 								"api",
-								"admin",
-								"users",
-								"{{user_id}}",
-								"role"
+								"itineraries",
+								"{{day_id}}"
 							]
 						},
-						"description": "Updates role for specified user (Requires ADMINISTRATOR role)."
+						"description": "Updates an existing itinerary day."
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Itinerary Day",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 204 No Content\", function () {",
+									"    pm.response.to.have.status(204);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/itineraries/{{day_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"itineraries",
+								"{{day_id}}"
+							]
+						},
+						"description": "Deletes an itinerary day by ID."
 					},
 					"response": []
 				}
 			],
-			"description": "Admin management endpoints (Requires ADMINISTRATOR role)."
+			"description": "Endpoints for itinerary day management (Requires JWT Authentication)."
+		},
+		{
+			"name": "5. Activities",
+			"item": [
+				{
+					"name": "Create Activity",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 201 Created\", function () {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"pm.test(\"Store created Activity ID\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.have.property('id');",
+									"    if (jsonData.id) {",
+									"        pm.collectionVariables.set(\"activity_id\", jsonData.id.toString());",
+									"        pm.environment.set(\"activity_id\", jsonData.id.toString());",
+									"    }",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Eiffel Tower Visit\",\n  \"description\": \"Guided tour of the Eiffel Tower summit.\",\n  \"location\": \"Champ de Mars, Paris\",\n  \"startTime\": \"2026-09-01T10:00:00\",\n  \"endTime\": \"2026-09-01T12:30:00\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/itineraries/{{day_id}}/activities",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"itineraries",
+								"{{day_id}}",
+								"activities"
+							]
+						},
+						"description": "Creates a new activity for a specific itinerary day."
+					},
+					"response": []
+				},
+				{
+					"name": "Get Day Activities",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200 OK\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"pm.test(\"Response is an array\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(Array.isArray(jsonData)).to.be.true;",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/itineraries/{{day_id}}/activities",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"itineraries",
+								"{{day_id}}",
+								"activities"
+							]
+						},
+						"description": "Retrieves all activities for a specific itinerary day."
+					},
+					"response": []
+				},
+				{
+					"name": "Update Activity",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200 OK\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Eiffel Tower Summit Tour - Updated\",\n  \"description\": \"Extended guided tour of Eiffel Tower summit and photography session.\",\n  \"location\": \"Champ de Mars, Paris\",\n  \"startTime\": \"2026-09-01T10:00:00\",\n  \"endTime\": \"2026-09-01T13:00:00\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/itineraries/{{day_id}}/activities/{{activity_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"itineraries",
+								"{{day_id}}",
+								"activities",
+								"{{activity_id}}"
+							]
+						},
+						"description": "Updates an existing activity with relationship verification."
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Activity",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 204 No Content\", function () {",
+									"    pm.response.to.have.status(204);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/itineraries/{{day_id}}/activities/{{activity_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"itineraries",
+								"{{day_id}}",
+								"activities",
+								"{{activity_id}}"
+							]
+						},
+						"description": "Deletes an activity by ID with relationship verification."
+					},
+					"response": []
+				}
+			],
+			"description": "Endpoints for activity management (Requires JWT Authentication)."
 		}
 	]
 }

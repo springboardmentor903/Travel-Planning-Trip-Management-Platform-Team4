@@ -1,0 +1,210 @@
+{
+	"info": {
+		"_postman_id": "c2d3e4f5-6789-01ab-cdef-2345678901bc",
+		"name": "TripNest - Activity API Collection",
+		"description": "Dedicated Postman collection for testing Activity endpoints in the TripNest platform.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"auth": {
+		"type": "bearer",
+		"bearer": [
+			{
+				"key": "token",
+				"value": "{{token}}",
+				"type": "string"
+			}
+		]
+	},
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:8080",
+			"type": "string"
+		},
+		{
+			"key": "token",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "day_id",
+			"value": "1",
+			"type": "string"
+		},
+		{
+			"key": "activity_id",
+			"value": "1",
+			"type": "string"
+		}
+	],
+	"item": [
+		{
+			"name": "Create Activity",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 201 Created\", function () {",
+							"    pm.response.to.have.status(201);",
+							"});",
+							"pm.test(\"Store created Activity ID\", function () {",
+							"    var jsonData = pm.response.json();",
+							"    pm.expect(jsonData).to.have.property('id');",
+							"    if (jsonData.id) {",
+							"        pm.collectionVariables.set(\"activity_id\", jsonData.id.toString());",
+							"        pm.environment.set(\"activity_id\", jsonData.id.toString());",
+							"    }",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"name\": \"Visit Charminar\",\n  \"description\": \"Explore Charminar and the surrounding market.\",\n  \"location\": \"Hyderabad\",\n  \"startTime\": \"2026-09-01T10:00:00\",\n  \"endTime\": \"2026-09-01T12:00:00\"\n}"
+				},
+				"url": {
+					"raw": "{{base_url}}/api/itineraries/{{day_id}}/activities",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"itineraries",
+						"{{day_id}}",
+						"activities"
+					]
+				},
+				"description": "POST /api/itineraries/{dayId}/activities - Creates a new activity for a specific itinerary day."
+			},
+			"response": []
+		},
+		{
+			"name": "Get Day Activities",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200 OK\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"pm.test(\"Response is an array\", function () {",
+							"    var jsonData = pm.response.json();",
+							"    pm.expect(Array.isArray(jsonData)).to.be.true;",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/api/itineraries/{{day_id}}/activities",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"itineraries",
+						"{{day_id}}",
+						"activities"
+					]
+				},
+				"description": "GET /api/itineraries/{dayId}/activities - Retrieves all activities for a specific itinerary day."
+			},
+			"response": []
+		},
+		{
+			"name": "Update Activity",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200 OK\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "PUT",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"name\": \"Visit Charminar - Updated Tour\",\n  \"description\": \"Extended guided tour of Charminar and Laad Bazaar.\",\n  \"location\": \"Old City, Hyderabad\",\n  \"startTime\": \"2026-09-01T10:30:00\",\n  \"endTime\": \"2026-09-01T13:00:00\"\n}"
+				},
+				"url": {
+					"raw": "{{base_url}}/api/itineraries/{{day_id}}/activities/{{activity_id}}",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"itineraries",
+						"{{day_id}}",
+						"activities",
+						"{{activity_id}}"
+					]
+				},
+				"description": "PUT /api/itineraries/{dayId}/activities/{activityId} - Updates an existing activity with relationship verification."
+			},
+			"response": []
+		},
+		{
+			"name": "Delete Activity",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 204 No Content\", function () {",
+							"    pm.response.to.have.status(204);",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "DELETE",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/api/itineraries/{{day_id}}/activities/{{activity_id}}",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"itineraries",
+						"{{day_id}}",
+						"activities",
+						"{{activity_id}}"
+					]
+				},
+				"description": "DELETE /api/itineraries/{dayId}/activities/{activityId} - Deletes an activity by ID with relationship verification."
+			},
+			"response": []
+		}
+	]
+}

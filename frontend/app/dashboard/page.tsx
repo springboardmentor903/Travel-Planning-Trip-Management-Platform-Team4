@@ -3,7 +3,7 @@
 import AppShell from "../../components/AppShell";
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { apiFetch } from "../../lib/api";
+import { getDestinations, getTrips } from "../../lib/api";
 import type { Destination, Trip, User } from "../../lib/types";
 
 export default function DashboardPage() {
@@ -21,8 +21,8 @@ export default function DashboardPage() {
       if (stored) setUser(JSON.parse(stored));
 
       const [destinationData, tripData] = await Promise.all([
-        apiFetch<Destination[]>("/destinations"),
-        apiFetch<Trip[]>("/trips/my"),
+        getDestinations(),
+        getTrips(),
       ]);
       setDestinations(destinationData);
       setTrips(tripData);

@@ -1,0 +1,174 @@
+{
+	"info": {
+		"_postman_id": "d3e4f5a6-7890-12bc-def3-3456789012cd",
+		"name": "TripNest - Destination API Collection",
+		"description": "Dedicated Postman collection for testing Destination and Weather endpoints in the TripNest platform.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:8080",
+			"type": "string"
+		}
+	],
+	"item": [
+		{
+			"name": "Get All Destinations",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200 OK\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"pm.test(\"Response is an array\", function () {",
+							"    var jsonData = pm.response.json();",
+							"    pm.expect(Array.isArray(jsonData)).to.be.true;",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"auth": {
+					"type": "noauth"
+				},
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/api/destinations",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"destinations"
+					]
+				},
+				"description": "GET /api/destinations - Fetches all available travel destinations (Public Endpoint)."
+			},
+			"response": []
+		},
+		{
+			"name": "Get Popular Destinations",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200 OK\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"pm.test(\"Response is an array\", function () {",
+							"    var jsonData = pm.response.json();",
+							"    pm.expect(Array.isArray(jsonData)).to.be.true;",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"auth": {
+					"type": "noauth"
+				},
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/api/destinations/popular",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"destinations",
+						"popular"
+					]
+				},
+				"description": "GET /api/destinations/popular - Fetches popular destinations ordered by trip bookings count (Public Endpoint)."
+			},
+			"response": []
+		},
+		{
+			"name": "Get Destination by ID",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200 OK\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"auth": {
+					"type": "noauth"
+				},
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/api/destinations/1",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"destinations",
+						"1"
+					]
+				},
+				"description": "GET /api/destinations/{id} - Fetches detailed information for a specific destination by ID (Public Endpoint)."
+			},
+			"response": []
+		},
+		{
+			"name": "Get Live Destination Weather",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200 OK\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"pm.test(\"Response contains temperature and condition\", function () {",
+							"    var jsonData = pm.response.json();",
+							"    pm.expect(jsonData).to.have.property('temperature');",
+							"    pm.expect(jsonData).to.have.property('condition');",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"auth": {
+					"type": "noauth"
+				},
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/api/destinations/1/weather",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"destinations",
+						"1",
+						"weather"
+					]
+				},
+				"description": "GET /api/destinations/{id}/weather - Fetches live weather information for a specific destination by ID (Public Endpoint)."
+			},
+			"response": []
+		}
+	]
+}
