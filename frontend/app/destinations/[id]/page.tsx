@@ -62,8 +62,8 @@ export default function DestinationDetailPage() {
       ) : (
         <div className="space-y-8">
           {/* Main Destination Hero Card */}
-          <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
-            <div className="relative h-72 w-full bg-slate-900 sm:h-96">
+          <section className="overflow-hidden rounded-3xl border border-slate-200/80 bg-white shadow-sm">
+            <div className="relative h-80 w-full bg-slate-900 sm:h-[400px]">
               {destination.imageUrl ? (
                 <img
                   src={destination.imageUrl}
@@ -71,46 +71,54 @@ export default function DestinationDetailPage() {
                   className="h-full w-full object-cover opacity-90"
                 />
               ) : (
-                <div className="flex h-full items-center justify-center bg-gradient-to-r from-indigo-700 to-violet-700 text-7xl">
+                <div className="flex h-full items-center justify-center bg-gradient-to-tr from-indigo-700 via-indigo-600 to-violet-700 text-7xl text-white">
                   🌴
                 </div>
               )}
-              <div className="absolute inset-0 bg-gradient-to-t from-slate-950/85 via-slate-900/30 to-transparent" />
+              <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-slate-900/30 to-transparent" />
 
-              <div className="absolute bottom-6 left-6 right-6 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
+              <div className="absolute bottom-7 left-7 right-7 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
                 <div>
-                  {destination.category && (
-                    <span className="inline-block rounded-full bg-indigo-600/90 backdrop-blur-md px-3 py-1 text-xs font-extrabold text-white shadow-sm">
-                      {destination.category}
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="rounded-full bg-indigo-600 px-3 py-1 text-xs font-extrabold text-white shadow-sm">
+                      Destination Highlight
                     </span>
-                  )}
-                  <h1 className="mt-2 text-3xl font-extrabold text-white sm:text-5xl">{destination.name}</h1>
-                  <p className="mt-1 text-lg font-bold text-indigo-200">
-                    📍 {destination.city || destination.location || destination.country || "Global Location"}
-                    {destination.country && destination.city ? `, ${destination.country}` : ""}
+                    {destination.category && (
+                      <span className="rounded-full bg-white/90 backdrop-blur-md px-3 py-1 text-xs font-extrabold text-slate-900 shadow-sm">
+                        {destination.category}
+                      </span>
+                    )}
+                  </div>
+                  <h1 className="mt-2 text-3xl font-extrabold text-white sm:text-5xl drop-shadow-sm">
+                    {destination.name}
+                  </h1>
+                  <p className="mt-1.5 text-lg font-bold text-indigo-200">
+                    📍 {destination.city || destination.country}{destination.city && destination.country ? `, ${destination.country}` : ""}
                   </p>
                 </div>
 
                 <Link
                   href={`/trips/new?destinationId=${destination.id}`}
-                  className="inline-flex items-center rounded-xl bg-indigo-600 px-6 py-3 text-sm font-bold text-white shadow-lg shadow-indigo-900/50 transition hover:bg-indigo-700"
+                  className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-r from-indigo-600 via-indigo-600 to-violet-600 px-6 py-3.5 text-xs font-extrabold text-white shadow-lg shadow-indigo-900/50 transition duration-200 hover:opacity-95 hover:shadow-xl"
                 >
-                  ✈️ Plan a Trip Here
+                  <span>✈️</span> Plan a Trip Here
                 </Link>
               </div>
             </div>
 
             {/* Specifications Grid */}
-            <div className="grid gap-4 p-6 sm:grid-cols-3 sm:p-8 border-b border-slate-100">
-              <InfoCard label="City" value={destination.city || "Not specified"} icon="🏙️" />
-              <InfoCard label="Country" value={destination.country || "Not specified"} icon="🌐" />
+            <div className="grid gap-4 p-6 sm:grid-cols-3 sm:p-8 border-b border-slate-100 bg-slate-50/50">
+              <InfoCard label="City" value={destination.city || destination.name} icon="🏙️" />
+              <InfoCard label="Country" value={destination.country || "Global"} icon="🌐" />
               <InfoCard label="Category" value={destination.category || "General"} icon="🏷️" />
             </div>
 
             {/* Description */}
             <div className="p-6 sm:p-8">
-              <h2 className="text-base font-bold uppercase tracking-wider text-slate-400">About {destination.name}</h2>
-              <p className="mt-3 text-sm leading-8 text-slate-700 whitespace-pre-wrap">
+              <h2 className="text-xs font-extrabold uppercase tracking-wider text-slate-400">
+                About {destination.name}
+              </h2>
+              <p className="mt-3 text-sm leading-relaxed text-slate-700 whitespace-pre-wrap">
                 {destination.description || "No detailed description available for this destination."}
               </p>
             </div>

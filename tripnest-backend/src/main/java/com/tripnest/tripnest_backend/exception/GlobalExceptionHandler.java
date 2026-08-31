@@ -20,6 +20,20 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(response, HttpStatus.NOT_FOUND);
     }
 
+    @ExceptionHandler(AlreadyTripMemberException.class)
+    public ResponseEntity<Map<String, String>> handleAlreadyTripMember(AlreadyTripMemberException ex) {
+        Map<String, String> response = new HashMap<>();
+        response.put("error", ex.getMessage());
+        return new ResponseEntity<>(response, HttpStatus.CONFLICT);
+    }
+
+    @ExceptionHandler(UnauthorizedTripMembershipOperationException.class)
+    public ResponseEntity<Map<String, String>> handleUnauthorizedTripMembershipOperation(UnauthorizedTripMembershipOperationException ex) {
+        Map<String, String> response = new HashMap<>();
+        response.put("error", ex.getMessage());
+        return new ResponseEntity<>(response, HttpStatus.FORBIDDEN);
+    }
+
     @ExceptionHandler(ExternalServiceException.class)
     public ResponseEntity<Map<String, String>> handleExternalServiceException(ExternalServiceException ex) {
         Map<String, String> response = new HashMap<>();

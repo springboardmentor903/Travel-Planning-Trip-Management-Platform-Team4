@@ -20,10 +20,13 @@ public class ItineraryService {
 
     private final ItineraryDayRepository itineraryDayRepository;
     private final TripRepository tripRepository;
+    private final TripAccessService tripAccessService;
 
     @Transactional
     public ItineraryDayResponse createItineraryDay(Integer tripId, CreateItineraryDayRequest request, String userEmail) {
-        Trip trip = tripRepository.findByIdAndUserEmail(tripId, userEmail)
+        tripAccessService.validateTripManagement(tripId, userEmail);
+
+        Trip trip = tripRepository.findById(tripId)
                 .orElseThrow(() -> new ResourceNotFoundException("Trip not found with id: " + tripId));
 
         if (itineraryDayRepository.existsByTripIdAndDayNumber(tripId, request.getDayNumber())) {
@@ -45,29 +48,30 @@ public class ItineraryService {
 
     @Transactional(readOnly = true)
     public List<ItineraryDayResponse> getItineraryDays(Integer tripId, String userEmail) {
-        if (!tripRepository.findByIdAndUserEmail(tripId, userEmail).isPresent()) {
-            throw new ResourceNotFoundException("Trip not found with id: " + tripId);
-        }
+        tripAccessService.validateTripAccess(tripId, userEmail);
 
-        return itineraryDayRepository.findByTripIdAndTripUserEmailOrderByDayNumberAsc(tripId, userEmail).stream()
+        return itineraryDayRepository.findByTripIdOrderByDayNumberAsc(tripId).stream()
                 .map(this::mapToResponse)
                 .toList();
     }
 
     @Transactional(readOnly = true)
     public ItineraryDayResponse getItineraryDay(Integer dayId, String userEmail) {
-        ItineraryDay itineraryDay = itineraryDayRepository.findByIdAndTripUserEmail(dayId, userEmail)
+        ItineraryDay itineraryDay = itineraryDayRepository.findById(dayId)
                 .orElseThrow(() -> new ResourceNotFoundException("Itinerary day not found with id: " + dayId));
+
+        tripAccessService.validateTripAccess(itineraryDay.getTrip().getId(), userEmail);
 
         return mapToResponse(itineraryDay);
     }
 
     @Transactional
     public ItineraryDayResponse updateItineraryDay(Integer dayId, UpdateItineraryDayRequest request, String userEmail) {
-        ItineraryDay itineraryDay = itineraryDayRepository.findByIdAndTripUserEmail(dayId, userEmail)
+        ItineraryDay itineraryDay = itineraryDayRepository.findById(dayId)
                 .orElseThrow(() -> new ResourceNotFoundException("Itinerary day not found with id: " + dayId));
 
         Trip trip = itineraryDay.getTrip();
+        tripAccessService.validateTripManagement(trip.getId(), userEmail);
 
         if (!itineraryDay.getDayNumber().equals(request.getDayNumber()) &&
                 itineraryDayRepository.existsByTripIdAndDayNumber(trip.getId(), request.getDayNumber())) {
@@ -87,8 +91,10 @@ public class ItineraryService {
 
     @Transactional
     public void deleteItineraryDay(Integer dayId, String userEmail) {
-        ItineraryDay itineraryDay = itineraryDayRepository.findByIdAndTripUserEmail(dayId, userEmail)
+        ItineraryDay itineraryDay = itineraryDayRepository.findById(dayId)
                 .orElseThrow(() -> new ResourceNotFoundException("Itinerary day not found with id: " + dayId));
+
+        tripAccessService.validateTripManagement(itineraryDay.getTrip().getId(), userEmail);
 
         itineraryDayRepository.delete(itineraryDay);
     }
