@@ -37,6 +37,9 @@ class ActivityServiceTest {
     @Mock
     private ItineraryDayRepository itineraryDayRepository;
 
+    @Mock
+    private TripAccessService tripAccessService;
+
     @InjectMocks
     private ActivityService activityService;
 
@@ -62,7 +65,8 @@ class ActivityServiceTest {
         LocalDateTime end = LocalDateTime.now().plusDays(2).withHour(12).withMinute(0);
         CreateActivityRequest request = new CreateActivityRequest("Eiffel Tower Visit", "Tour Eiffel", "Paris", start, end);
 
-        when(itineraryDayRepository.findByIdAndTripUserEmail(1, "user@example.com")).thenReturn(Optional.of(itineraryDay));
+        when(itineraryDayRepository.findById(1)).thenReturn(Optional.of(itineraryDay));
+        doNothing().when(tripAccessService).validateTripAccess(100, "user@example.com");
         when(activityRepository.save(any(Activity.class))).thenReturn(activity);
 
         ActivityResponse response = activityService.createActivity(1, request, "user@example.com");
@@ -78,15 +82,17 @@ class ActivityServiceTest {
         LocalDateTime end = LocalDateTime.now().plusDays(2).withHour(10).withMinute(0);
         CreateActivityRequest request = new CreateActivityRequest("Eiffel Tower Visit", "Tour Eiffel", "Paris", start, end);
 
-        when(itineraryDayRepository.findByIdAndTripUserEmail(1, "user@example.com")).thenReturn(Optional.of(itineraryDay));
+        when(itineraryDayRepository.findById(1)).thenReturn(Optional.of(itineraryDay));
+        doNothing().when(tripAccessService).validateTripAccess(100, "user@example.com");
 
         assertThrows(IllegalArgumentException.class, () -> activityService.createActivity(1, request, "user@example.com"));
     }
 
     @Test
     void testGetActivities_Success() {
-        when(itineraryDayRepository.findByIdAndTripUserEmail(1, "user@example.com")).thenReturn(Optional.of(itineraryDay));
-        when(activityRepository.findByItineraryDayIdAndItineraryDayTripUserEmailOrderByStartTimeAsc(1, "user@example.com")).thenReturn(List.of(activity));
+        when(itineraryDayRepository.findById(1)).thenReturn(Optional.of(itineraryDay));
+        doNothing().when(tripAccessService).validateTripAccess(100, "user@example.com");
+        when(activityRepository.findByItineraryDayIdOrderByStartTimeAsc(1)).thenReturn(List.of(activity));
 
         List<ActivityResponse> response = activityService.getActivities(1, "user@example.com");
 
@@ -100,7 +106,8 @@ class ActivityServiceTest {
         LocalDateTime end = LocalDateTime.now().plusDays(2).withHour(12).withMinute(0);
         UpdateActivityRequest updateRequest = new UpdateActivityRequest("Updated Activity", "New Description", "Paris", start, end);
 
-        when(activityRepository.findByIdAndItineraryDayIdAndItineraryDayTripUserEmail(10, 1, "user@example.com")).thenReturn(Optional.of(activity));
+        when(activityRepository.findById(10)).thenReturn(Optional.of(activity));
+        doNothing().when(tripAccessService).validateTripAccess(100, "user@example.com");
         when(activityRepository.save(any(Activity.class))).thenReturn(activity);
 
         ActivityResponse response = activityService.updateActivity(1, 10, updateRequest, "user@example.com");
@@ -110,19 +117,20 @@ class ActivityServiceTest {
     }
 
     @Test
-    void testUpdateActivity_UnauthorizedOrMismatch_ThrowsException() {
+    void testUpdateActivity_NotFound_ThrowsException() {
         LocalDateTime start = LocalDateTime.now().plusDays(2).withHour(10).withMinute(0);
         LocalDateTime end = LocalDateTime.now().plusDays(2).withHour(12).withMinute(0);
         UpdateActivityRequest updateRequest = new UpdateActivityRequest("Updated Activity", "New Description", "Paris", start, end);
 
-        when(activityRepository.findByIdAndItineraryDayIdAndItineraryDayTripUserEmail(10, 1, "otheruser@example.com")).thenReturn(Optional.empty());
+        when(activityRepository.findById(10)).thenReturn(Optional.empty());
 
         assertThrows(ResourceNotFoundException.class, () -> activityService.updateActivity(1, 10, updateRequest, "otheruser@example.com"));
     }
 
     @Test
     void testDeleteActivity_Success() {
-        when(activityRepository.findByIdAndItineraryDayIdAndItineraryDayTripUserEmail(10, 1, "user@example.com")).thenReturn(Optional.of(activity));
+        when(activityRepository.findById(10)).thenReturn(Optional.of(activity));
+        doNothing().when(tripAccessService).validateTripAccess(100, "user@example.com");
 
         activityService.deleteActivity(1, 10, "user@example.com");
 

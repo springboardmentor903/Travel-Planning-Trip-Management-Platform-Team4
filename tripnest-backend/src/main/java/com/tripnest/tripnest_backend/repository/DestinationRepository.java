@@ -10,6 +10,8 @@ import java.util.List;
 @Repository
 public interface DestinationRepository extends JpaRepository<Destination, Integer> {
 
+    boolean existsByName(String name);
+
     @Query("SELECT d FROM Destination d LEFT JOIN Trip t ON t.destination = d GROUP BY d.id, d.name, d.country, d.city, d.description, d.imageUrl, d.category ORDER BY COUNT(t.id) DESC, d.id ASC")
     List<Destination> findPopularDestinations();
 }

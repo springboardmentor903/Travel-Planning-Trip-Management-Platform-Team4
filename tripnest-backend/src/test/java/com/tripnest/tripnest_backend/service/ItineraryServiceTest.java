@@ -36,6 +36,9 @@ class ItineraryServiceTest {
     @Mock
     private TripRepository tripRepository;
 
+    @Mock
+    private TripAccessService tripAccessService;
+
     @InjectMocks
     private ItineraryService itineraryService;
 
@@ -56,7 +59,8 @@ class ItineraryServiceTest {
     void testCreateItineraryDay_Success() {
         CreateItineraryDayRequest request = new CreateItineraryDayRequest(1, LocalDate.now().plusDays(2), "Day 1 Arrival", "Arrive in Paris");
 
-        when(tripRepository.findByIdAndUserEmail(100, "user@example.com")).thenReturn(Optional.of(trip));
+        doNothing().when(tripAccessService).validateTripManagement(100, "user@example.com");
+        when(tripRepository.findById(100)).thenReturn(Optional.of(trip));
         when(itineraryDayRepository.existsByTripIdAndDayNumber(100, 1)).thenReturn(false);
         when(itineraryDayRepository.save(any(ItineraryDay.class))).thenReturn(itineraryDay);
 
@@ -71,7 +75,8 @@ class ItineraryServiceTest {
     @Test
     void testCreateItineraryDay_NonExistentTrip_ThrowsException() {
         CreateItineraryDayRequest request = new CreateItineraryDayRequest(1, LocalDate.now().plusDays(2), "Day 1 Arrival", "Arrive in Paris");
-        when(tripRepository.findByIdAndUserEmail(999, "user@example.com")).thenReturn(Optional.empty());
+        doNothing().when(tripAccessService).validateTripManagement(999, "user@example.com");
+        when(tripRepository.findById(999)).thenReturn(Optional.empty());
 
         assertThrows(ResourceNotFoundException.class, () -> itineraryService.createItineraryDay(999, request, "user@example.com"));
     }
@@ -80,7 +85,8 @@ class ItineraryServiceTest {
     void testCreateItineraryDay_DuplicateDayNumber_ThrowsException() {
         CreateItineraryDayRequest request = new CreateItineraryDayRequest(1, LocalDate.now().plusDays(2), "Day 1 Arrival", "Arrive in Paris");
 
-        when(tripRepository.findByIdAndUserEmail(100, "user@example.com")).thenReturn(Optional.of(trip));
+        doNothing().when(tripAccessService).validateTripManagement(100, "user@example.com");
+        when(tripRepository.findById(100)).thenReturn(Optional.of(trip));
         when(itineraryDayRepository.existsByTripIdAndDayNumber(100, 1)).thenReturn(true);
 
         assertThrows(IllegalArgumentException.class, () -> itineraryService.createItineraryDay(100, request, "user@example.com"));
@@ -90,7 +96,8 @@ class ItineraryServiceTest {
     void testCreateItineraryDay_DateOutOfTripRange_ThrowsException() {
         CreateItineraryDayRequest request = new CreateItineraryDayRequest(1, LocalDate.now().plusDays(20), "Invalid Date Day", "Out of bounds");
 
-        when(tripRepository.findByIdAndUserEmail(100, "user@example.com")).thenReturn(Optional.of(trip));
+        doNothing().when(tripAccessService).validateTripManagement(100, "user@example.com");
+        when(tripRepository.findById(100)).thenReturn(Optional.of(trip));
         when(itineraryDayRepository.existsByTripIdAndDayNumber(100, 1)).thenReturn(false);
 
         assertThrows(IllegalArgumentException.class, () -> itineraryService.createItineraryDay(100, request, "user@example.com"));
@@ -98,8 +105,8 @@ class ItineraryServiceTest {
 
     @Test
     void testGetItineraryDays_Success() {
-        when(tripRepository.findByIdAndUserEmail(100, "user@example.com")).thenReturn(Optional.of(trip));
-        when(itineraryDayRepository.findByTripIdAndTripUserEmailOrderByDayNumberAsc(100, "user@example.com")).thenReturn(List.of(itineraryDay));
+        doNothing().when(tripAccessService).validateTripAccess(100, "user@example.com");
+        when(itineraryDayRepository.findByTripIdOrderByDayNumberAsc(100)).thenReturn(List.of(itineraryDay));
 
         List<ItineraryDayResponse> response = itineraryService.getItineraryDays(100, "user@example.com");
 
@@ -109,7 +116,7 @@ class ItineraryServiceTest {
 
     @Test
     void testGetItineraryDay_NotFound_ThrowsException() {
-        when(itineraryDayRepository.findByIdAndTripUserEmail(999, "user@example.com")).thenReturn(Optional.empty());
+        when(itineraryDayRepository.findById(999)).thenReturn(Optional.empty());
 
         assertThrows(ResourceNotFoundException.class, () -> itineraryService.getItineraryDay(999, "user@example.com"));
     }
@@ -118,7 +125,8 @@ class ItineraryServiceTest {
     void testUpdateItineraryDay_Success() {
         UpdateItineraryDayRequest updateRequest = new UpdateItineraryDayRequest(1, LocalDate.now().plusDays(3), "Updated Title", "Updated Description");
 
-        when(itineraryDayRepository.findByIdAndTripUserEmail(1, "user@example.com")).thenReturn(Optional.of(itineraryDay));
+        when(itineraryDayRepository.findById(1)).thenReturn(Optional.of(itineraryDay));
+        doNothing().when(tripAccessService).validateTripManagement(100, "user@example.com");
         when(itineraryDayRepository.save(any(ItineraryDay.class))).thenReturn(itineraryDay);
 
         ItineraryDayResponse response = itineraryService.updateItineraryDay(1, updateRequest, "user@example.com");
@@ -129,7 +137,8 @@ class ItineraryServiceTest {
 
     @Test
     void testDeleteItineraryDay_Success() {
-        when(itineraryDayRepository.findByIdAndTripUserEmail(1, "user@example.com")).thenReturn(Optional.of(itineraryDay));
+        when(itineraryDayRepository.findById(1)).thenReturn(Optional.of(itineraryDay));
+        doNothing().when(tripAccessService).validateTripManagement(100, "user@example.com");
 
         itineraryService.deleteItineraryDay(1, "user@example.com");
 

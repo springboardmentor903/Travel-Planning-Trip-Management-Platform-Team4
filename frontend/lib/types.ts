@@ -140,3 +140,52 @@ export type RemainingBudget = {
   remainingBudget: number;
 };
 
+export type MembershipRole = "MEMBER" | "GROUP_ADMIN";
+
+export type TripMemberResponse = {
+  id: number;
+  userId: number;
+  name: string;
+  email: string;
+  role: MembershipRole;
+  joinedAt?: string | null;
+};
+
+export type AddTripMemberRequest = {
+  email: string;
+};
+
+export type ChangeMemberRoleRequest = {
+  role: MembershipRole;
+};
+
+export type TripSearchResponse = {
+  id: number;
+  title: string;
+  destinationName?: string | null;
+  country?: string | null;
+  startDate: string;
+  endDate: string;
+  ownerId: number;
+  ownerName: string;
+};
+
+export type JoinRequestStatus = "PENDING" | "APPROVED" | "REJECTED" | "CANCELLED";
+
+export type JoinRequestResponse = {
+  requestId: number;
+  tripId: number;
+  tripTitle: string;
+  userId: number;
+  name: string;
+  email: string;
+  status: JoinRequestStatus;
+  createdAt: string;
+  reviewedAt?: string | null;
+  reviewedById?: number | null;
+  reviewedByName?: string | null;
+};
+
+
+
+

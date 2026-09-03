@@ -8,9 +8,13 @@ import type {
   Destination,
   Expense,
   ItineraryDay,
+  JoinRequestResponse,
+  MembershipRole,
   PlaceInfo,
   RemainingBudget,
   Trip,
+  TripMemberResponse,
+  TripSearchResponse,
   UpdateActivityRequest,
   UpdateExpenseRequest,
   UpdateItineraryDayRequest,
@@ -232,4 +236,84 @@ export async function getRemainingBudget(
 ): Promise<RemainingBudget> {
   return apiFetch<RemainingBudget>(`/trips/${tripId}/expenses/remaining-budget`);
 }
+
+/* --- Membership Helper APIs --- */
+
+export async function getTripMembers(
+  tripId: number | string
+): Promise<TripMemberResponse[]> {
+  return apiFetch<TripMemberResponse[]>(`/trips/${tripId}/members`);
+}
+
+export async function addTripMember(
+  tripId: number | string,
+  email: string
+): Promise<TripMemberResponse> {
+  return apiFetch<TripMemberResponse>(`/trips/${tripId}/members`, {
+    method: "POST",
+    body: JSON.stringify({ email }),
+  });
+}
+
+export async function changeTripMemberRole(
+  tripId: number | string,
+  userId: number | string,
+  role: MembershipRole
+): Promise<TripMemberResponse> {
+  return apiFetch<TripMemberResponse>(`/trips/${tripId}/members/${userId}/role`, {
+    method: "PATCH",
+    body: JSON.stringify({ role }),
+  });
+}
+
+export async function removeTripMember(
+  tripId: number | string,
+  userId: number | string
+): Promise<void> {
+  return apiFetch<void>(`/trips/${tripId}/members/${userId}`, {
+    method: "DELETE",
+  });
+}
+
+/* --- Join Request Helper APIs --- */
+
+export async function searchTrips(name: string): Promise<TripSearchResponse[]> {
+  return apiFetch<TripSearchResponse[]>(`/trips/search?name=${encodeURIComponent(name)}`);
+}
+
+export async function createJoinRequest(
+  tripId: number | string
+): Promise<JoinRequestResponse> {
+  return apiFetch<JoinRequestResponse>(`/trips/${tripId}/join-requests`, {
+    method: "POST",
+  });
+}
+
+export async function getPendingJoinRequests(
+  tripId: number | string
+): Promise<JoinRequestResponse[]> {
+  return apiFetch<JoinRequestResponse[]>(`/trips/${tripId}/join-requests`);
+}
+
+export async function approveJoinRequest(
+  tripId: number | string,
+  requestId: number | string
+): Promise<JoinRequestResponse> {
+  return apiFetch<JoinRequestResponse>(`/trips/${tripId}/join-requests/${requestId}/approve`, {
+    method: "PATCH",
+  });
+}
+
+export async function rejectJoinRequest(
+  tripId: number | string,
+  requestId: number | string
+): Promise<JoinRequestResponse> {
+  return apiFetch<JoinRequestResponse>(`/trips/${tripId}/join-requests/${requestId}/reject`, {
+    method: "PATCH",
+  });
+}
+
+
+
+
 

@@ -5,17 +5,22 @@ import com.tripnest.tripnest_backend.dto.DestinationResponse;
 import com.tripnest.tripnest_backend.dto.TripResponse;
 import com.tripnest.tripnest_backend.dto.UpdateTripRequest;
 import com.tripnest.tripnest_backend.entity.Destination;
+import com.tripnest.tripnest_backend.entity.MembershipRole;
 import com.tripnest.tripnest_backend.entity.Trip;
+import com.tripnest.tripnest_backend.entity.TripMembership;
 import com.tripnest.tripnest_backend.entity.User;
 import com.tripnest.tripnest_backend.exception.ResourceNotFoundException;
 import com.tripnest.tripnest_backend.repository.DestinationRepository;
+import com.tripnest.tripnest_backend.repository.TripMembershipRepository;
 import com.tripnest.tripnest_backend.repository.TripRepository;
 import com.tripnest.tripnest_backend.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
@@ -24,6 +29,8 @@ public class TripService {
     private final TripRepository tripRepository;
     private final UserRepository userRepository;
     private final DestinationRepository destinationRepository;
+    private final TripMembershipRepository tripMembershipRepository;
+    private final TripAccessService tripAccessService;
 
     @Transactional
     public TripResponse createTrip(CreateTripRequest request, String userEmail) {
@@ -47,26 +54,47 @@ public class TripService {
         trip.setNotes(request.getNotes());
 
         Trip savedTrip = tripRepository.save(trip);
+
+        TripMembership ownerMembership = new TripMembership();
+        ownerMembership.setTrip(savedTrip);
+        ownerMembership.setUser(user);
+        ownerMembership.setRole(MembershipRole.GROUP_ADMIN);
+        tripMembershipRepository.save(ownerMembership);
+
         return mapToResponse(savedTrip);
     }
 
     @Transactional(readOnly = true)
     public List<TripResponse> getUserTrips(String userEmail) {
-        return tripRepository.findByUserEmail(userEmail).stream()
+        User user = userRepository.findByEmail(userEmail)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found with email: " + userEmail));
+
+        List<Trip> ownedTrips = tripRepository.findByUserEmail(userEmail);
+        List<Trip> memberTrips = tripMembershipRepository.findByUserId(user.getId()).stream()
+                .map(TripMembership::getTrip)
+                .toList();
+
+        Set<Trip> allTrips = new LinkedHashSet<>(ownedTrips);
+        allTrips.addAll(memberTrips);
+
+        return allTrips.stream()
                 .map(this::mapToResponse)
                 .toList();
     }
 
     @Transactional(readOnly = true)
     public TripResponse getTripById(Integer id, String userEmail) {
-        Trip trip = tripRepository.findByIdAndUserEmail(id, userEmail)
+        tripAccessService.validateTripAccess(id, userEmail);
+        Trip trip = tripRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Trip not found with id: " + id));
         return mapToResponse(trip);
     }
 
     @Transactional
     public TripResponse updateTrip(Integer id, UpdateTripRequest request, String userEmail) {
-        Trip trip = tripRepository.findByIdAndUserEmail(id, userEmail)
+        tripAccessService.validateTripManagement(id, userEmail);
+
+        Trip trip = tripRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Trip not found with id: " + id));
 
         Destination destination = destinationRepository.findById(request.getDestinationId())
@@ -89,7 +117,9 @@ public class TripService {
 
     @Transactional
     public void deleteTrip(Integer id, String userEmail) {
-        Trip trip = tripRepository.findByIdAndUserEmail(id, userEmail)
+        tripAccessService.validateTripManagement(id, userEmail);
+
+        Trip trip = tripRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Trip not found with id: " + id));
         tripRepository.delete(trip);
     }

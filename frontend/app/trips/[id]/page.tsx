@@ -4,27 +4,48 @@ import AppShell from "../../../components/AppShell";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { deleteTrip, getTrip } from "../../../lib/api";
-import type { Trip } from "../../../lib/types";
+import { deleteTrip, getTrip, getTripMembers } from "../../../lib/api";
+import type { Trip, TripMemberResponse } from "../../../lib/types";
 import ItinerarySection from "../../../components/trips/ItinerarySection";
 import ExpenseSection from "../../../components/trips/ExpenseSection";
+import MembersSection from "../../../components/trips/MembersSection";
+import JoinRequestsSection from "../../../components/trips/JoinRequestsSection";
 
 export default function TripDetailPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
   const [trip, setTrip] = useState<Trip | null>(null);
+  const [members, setMembers] = useState<TripMemberResponse[]>([]);
+  const [currentUser, setCurrentUser] = useState<{ id?: number; email?: string } | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const stored = localStorage.getItem("user");
+      if (stored) {
+        try {
+          setCurrentUser(JSON.parse(stored));
+        } catch {
+          setCurrentUser(null);
+        }
+      }
+    }
+  }, []);
 
   const loadTrip = async () => {
     if (!params.id) return;
     setLoading(true);
     setError("");
     try {
-      const data = await getTrip(params.id);
-      setTrip(data);
+      const [tripData, memberList] = await Promise.all([
+        getTrip(params.id),
+        getTripMembers(params.id).catch(() => []),
+      ]);
+      setTrip(tripData);
+      setMembers(memberList);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unable to load trip details from backend.");
     } finally {
@@ -35,6 +56,20 @@ export default function TripDetailPage() {
   useEffect(() => {
     loadTrip();
   }, [params.id]);
+
+  const isOwner =
+    trip != null &&
+    ((currentUser?.id != null && trip.userId === currentUser.id) ||
+      (currentUser?.email != null && trip.userEmail?.toLowerCase() === currentUser.email.toLowerCase()));
+
+  const currentMemberRecord = members.find(
+    (m) =>
+      (currentUser?.id != null && m.userId === currentUser.id) ||
+      (currentUser?.email != null && m.email.toLowerCase() === currentUser.email.toLowerCase())
+  );
+
+  const isGroupAdmin = currentMemberRecord?.role === "GROUP_ADMIN";
+  const canManage = isOwner || isGroupAdmin;
 
   const handleDelete = async () => {
     if (!trip) return;
@@ -90,9 +125,16 @@ export default function TripDetailPage() {
           {/* Main Trip Card Component */}
           <TripOverviewCard
             trip={trip}
+            canManage={canManage}
             onEdit={() => router.push(`/trips/${trip.id}/edit`)}
             onDelete={() => setDeleteModalOpen(true)}
           />
+
+          {/* Pending Join Requests (Owner / Group Admin Only) */}
+          <JoinRequestsSection tripId={trip.id} canManage={canManage} onMemberAdded={loadTrip} />
+
+          {/* Group Members Section */}
+          <MembersSection tripId={trip.id} ownerId={trip.userId} ownerEmail={trip.userEmail} />
 
           {/* Budget & Expense Tracking Section */}
           <ExpenseSection trip={trip} onTripUpdated={loadTrip} />
@@ -135,10 +177,12 @@ export default function TripDetailPage() {
 
 function TripOverviewCard({
   trip,
+  canManage,
   onEdit,
   onDelete,
 }: {
   trip: Trip;
+  canManage: boolean;
   onEdit: () => void;
   onDelete: () => void;
 }) {
@@ -182,20 +226,22 @@ function TripOverviewCard({
             </p>
           </div>
 
-          <div className="flex items-center gap-2">
-            <button
-              onClick={onEdit}
-              className="rounded-xl border border-white/20 bg-white/10 px-4 py-2.5 text-sm font-bold text-white backdrop-blur-md transition hover:bg-white/20"
-            >
-              ✏️ Edit Trip
-            </button>
-            <button
-              onClick={onDelete}
-              className="rounded-xl border border-red-300/30 bg-red-600/30 px-4 py-2.5 text-sm font-bold text-red-200 backdrop-blur-md transition hover:bg-red-600/50 hover:text-white"
-            >
-              🗑️ Delete
-            </button>
-          </div>
+          {canManage && (
+            <div className="flex items-center gap-2">
+              <button
+                onClick={onEdit}
+                className="rounded-xl border border-white/20 bg-white/10 px-4 py-2.5 text-sm font-bold text-white backdrop-blur-md transition hover:bg-white/20"
+              >
+                ✏️ Edit Trip
+              </button>
+              <button
+                onClick={onDelete}
+                className="rounded-xl border border-red-300/30 bg-red-600/30 px-4 py-2.5 text-sm font-bold text-red-200 backdrop-blur-md transition hover:bg-red-600/50 hover:text-white"
+              >
+                🗑️ Delete
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
