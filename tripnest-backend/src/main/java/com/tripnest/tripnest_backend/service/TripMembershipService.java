@@ -5,6 +5,7 @@ import com.tripnest.tripnest_backend.dto.ChangeMemberRoleRequest;
 import com.tripnest.tripnest_backend.dto.TripMemberResponse;
 import com.tripnest.tripnest_backend.entity.MembershipRole;
 import com.tripnest.tripnest_backend.entity.Trip;
+import com.tripnest.tripnest_backend.entity.NotificationType;
 import com.tripnest.tripnest_backend.entity.TripMembership;
 import com.tripnest.tripnest_backend.entity.User;
 import com.tripnest.tripnest_backend.exception.AlreadyTripMemberException;
@@ -27,6 +28,7 @@ public class TripMembershipService {
     private final TripMembershipRepository tripMembershipRepository;
     private final TripRepository tripRepository;
     private final UserRepository userRepository;
+    private final NotificationService notificationService;
 
     @Transactional
     public TripMemberResponse addMember(Integer tripId, AddTripMemberRequest request, String currentUserEmail) {
@@ -55,6 +57,16 @@ public class TripMembershipService {
         membership.setRole(role);
 
         TripMembership saved = tripMembershipRepository.save(membership);
+
+        // Create notification ONLY after membership is saved successfully
+        notificationService.createNotification(
+                targetUser,
+                "Added to Trip",
+                "You have been added to the trip: " + trip.getTitle(),
+                NotificationType.MEMBER_ADDED,
+                tripId
+        );
+
         return mapToResponse(saved);
     }
 

@@ -28,4 +28,17 @@ public class AuthController {
         AuthResponse response = userService.loginUser(request);
         return new ResponseEntity<>(response, HttpStatus.OK);
     }
+
+    @PutMapping("/change-password")
+    public ResponseEntity<java.util.Map<String, String>> changePassword(
+            @Valid @RequestBody com.tripnest.tripnest_backend.dto.ChangePasswordRequest request,
+            org.springframework.security.core.Authentication authentication) {
+        if (authentication == null || authentication.getName() == null) {
+            return new ResponseEntity<>(HttpStatus.UNAUTHORIZED);
+        }
+        userService.changePassword(authentication.getName(), request);
+        java.util.Map<String, String> response = new java.util.HashMap<>();
+        response.put("message", "Password updated successfully");
+        return ResponseEntity.ok(response);
+    }
 }

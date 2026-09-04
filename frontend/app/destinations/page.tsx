@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { getDestinations } from "../../lib/api";
 import type { Destination } from "../../lib/types";
+import { Search, MapPin, Compass, ArrowRight, Heart, Sparkles } from "lucide-react";
 
 export default function DestinationsPage() {
   const [destinations, setDestinations] = useState<Destination[]>([]);
@@ -12,6 +13,7 @@ export default function DestinationsPage() {
   const [error, setError] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
+  const [favorites, setFavorites] = useState<number[]>([]);
 
   const loadDestinations = async () => {
     setLoading(true);
@@ -30,10 +32,8 @@ export default function DestinationsPage() {
     loadDestinations();
   }, []);
 
-  // Category options
   const categoryList = ["All", "Beach", "Nature", "Adventure", "Culture", "City", "Luxury"];
 
-  // Client-side filtering matching search query (Name, City, Country, Category)
   const filteredDestinations = useMemo(() => {
     return destinations.filter((dest) => {
       const query = searchQuery.toLowerCase().trim();
@@ -54,57 +54,70 @@ export default function DestinationsPage() {
     });
   }, [destinations, searchQuery, selectedCategory]);
 
+  const toggleFavorite = (id: number, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setFavorites((prev) => (prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]));
+  };
+
   return (
     <AppShell>
-      {/* Header Banner */}
-      <section className="rounded-3xl bg-gradient-to-tr from-indigo-700 via-indigo-600 to-violet-600 p-8 text-white shadow-xl shadow-indigo-100 sm:p-11">
-        <div className="flex items-center gap-2">
-          <span className="rounded-full bg-white/20 px-3 py-1 text-xs font-extrabold text-white backdrop-blur-md">
-            Destination Discovery
-          </span>
-          <span className="text-xs font-bold text-indigo-200">•</span>
-          <span className="text-xs font-semibold text-indigo-100">Explore. Plan. Experience.</span>
-        </div>
-        <h1 className="mt-3 text-3xl font-extrabold tracking-tight sm:text-5xl">Explore Popular Destinations</h1>
-        <p className="mt-3 max-w-2xl text-sm leading-relaxed text-indigo-100 sm:text-base">
-          Discover breathtaking locations worldwide, check live weather forecasts, explore top attractions, and launch your next trip itinerary seamlessly.
-        </p>
-
-        {/* Search Input Bar */}
-        <div className="mt-7 flex max-w-2xl items-center rounded-2xl border border-white/25 bg-white/15 p-2 shadow-lg backdrop-blur-md">
-          <span className="px-3 text-lg">🔍</span>
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search by city, country, or destination name (e.g. Goa, Tokyo, Paris)..."
-            className="w-full bg-transparent px-2 py-2.5 text-sm font-medium text-white placeholder-indigo-200 outline-none"
+      {/* HEADER HERO */}
+      <div className="mb-10 rounded-3xl bg-[#111827] p-8 text-white shadow-xl sm:p-12 relative overflow-hidden">
+        <div className="absolute inset-0 opacity-20 pointer-events-none">
+          <img
+            src="https://images.unsplash.com/photo-1488646953014-85cb44e25828?auto=format&fit=crop&w=1200&q=80"
+            alt="Destinations Background"
+            className="h-full w-full object-cover"
           />
-          {searchQuery && (
-            <button
-              onClick={() => setSearchQuery("")}
-              className="mr-2 text-xs font-bold text-indigo-200 hover:text-white"
-            >
-              Clear
-            </button>
-          )}
         </div>
-      </section>
 
-      {/* Global Error Banner */}
+        <div className="relative z-10 max-w-2xl">
+          <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3.5 py-1 text-xs font-semibold text-white backdrop-blur-md mb-4 border border-white/15">
+            <Sparkles className="h-3.5 w-3.5 text-indigo-300" />
+            <span>Curated Travel Spots</span>
+          </div>
+
+          <h1 className="text-3xl sm:text-5xl font-extrabold tracking-tight">Explore Destinations</h1>
+          <p className="mt-3 text-sm text-white/80 leading-relaxed">
+            Discover breathtaking locations worldwide, inspect live weather forecasts, and create customized itineraries.
+          </p>
+
+          {/* SEARCH INPUT */}
+          <div className="mt-6 flex items-center rounded-2xl border border-white/20 bg-white/10 p-2 shadow-lg backdrop-blur-md">
+            <Search className="ml-3 h-5 w-5 text-white/70" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search by city, country, or spot name..."
+              className="w-full bg-transparent px-3 py-2 text-xs sm:text-sm font-medium text-white placeholder-white/60 outline-none"
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery("")}
+                className="mr-3 text-xs font-bold text-white/80 hover:text-white"
+              >
+                Clear
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+
       {error && (
-        <div className="mt-6 rounded-2xl border border-red-200 bg-red-50 p-4 text-xs font-bold text-red-700">
+        <div className="mb-8 rounded-2xl border border-rose-200 bg-rose-50 p-4 text-xs font-semibold text-rose-700">
           {error}
         </div>
       )}
 
-      {/* Destinations Catalog & Category Filters */}
-      <section className="mt-10 rounded-3xl border border-slate-200/80 bg-white p-6 shadow-sm sm:p-8">
-        <div className="flex flex-col justify-between gap-4 lg:flex-row lg:items-center">
+      {/* FILTER CATEGORIES & CATALOG */}
+      <div className="space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h2 className="text-xl font-extrabold text-slate-900">Explore Catalog</h2>
-            <p className="mt-0.5 text-xs text-slate-500">
-              Showing {filteredDestinations.length} of {destinations.length} available destinations
+            <h2 className="text-xl font-extrabold text-[#111827]">All Destinations</h2>
+            <p className="text-xs text-[#6B7280]">
+              Showing {filteredDestinations.length} of {destinations.length} places
             </p>
           </div>
 
@@ -116,10 +129,10 @@ export default function DestinationsPage() {
                 <button
                   key={cat}
                   onClick={() => setSelectedCategory(cat)}
-                  className={`rounded-2xl px-4 py-2 text-xs font-extrabold transition duration-200 ${
+                  className={`rounded-xl px-3.5 py-1.5 text-xs font-semibold transition ${
                     active
-                      ? "bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-md shadow-indigo-100"
-                      : "bg-slate-100/80 text-slate-600 hover:bg-slate-200 hover:text-slate-900"
+                      ? "bg-[#111827] text-white shadow-2xs"
+                      : "border border-[#E5E7EB] bg-white text-[#6B7280] hover:bg-[#FAFAF9] hover:text-[#111827]"
                   }`}
                 >
                   {cat}
@@ -129,92 +142,83 @@ export default function DestinationsPage() {
           </div>
         </div>
 
-        {/* Catalog Grid */}
+        {/* CATALOG GRID */}
         {loading ? (
-          <div className="mt-8 rounded-2xl bg-slate-50 p-12 text-center text-xs font-bold text-slate-500">
-            <div className="mx-auto mb-3 h-8 w-8 animate-spin rounded-full border-4 border-indigo-600 border-t-transparent" />
-            Loading destination catalogue from backend…
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="animate-pulse rounded-2xl border border-[#E5E7EB] bg-white p-4">
+                <div className="h-48 w-full rounded-xl bg-slate-200 mb-3" />
+                <div className="h-5 w-2/3 rounded bg-slate-200 mb-2" />
+                <div className="h-3 w-1/3 rounded bg-slate-100" />
+              </div>
+            ))}
           </div>
         ) : filteredDestinations.length === 0 ? (
-          <div className="mt-8 rounded-3xl border border-dashed border-slate-300 p-12 text-center">
-            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-indigo-50 text-2xl">
-              🔍
-            </div>
-            <h3 className="mt-4 text-lg font-extrabold text-slate-900">No destinations found</h3>
-            <p className="mt-1 text-xs text-slate-500">
-              No results matched your search "{searchQuery}". Try searching for another city or resetting category filters.
-            </p>
+          <div className="rounded-3xl border border-dashed border-[#E5E7EB] bg-white p-12 text-center">
+            <Compass className="mx-auto h-10 w-10 text-[#9CA3AF] mb-3" />
+            <h3 className="text-base font-extrabold text-[#111827]">No destinations found</h3>
+            <p className="mt-1 text-xs text-[#6B7280]">Try searching for a different city or category.</p>
             <button
               onClick={() => {
                 setSearchQuery("");
                 setSelectedCategory("All");
               }}
-              className="mt-5 inline-flex rounded-2xl bg-indigo-600 px-5 py-2.5 text-xs font-extrabold text-white shadow-md shadow-indigo-100 hover:bg-indigo-700"
+              className="mt-4 rounded-xl bg-[#4338CA] px-4 py-2 text-xs font-semibold text-white"
             >
               Reset Filters
             </button>
           </div>
         ) : (
-          <div className="mt-7 grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {filteredDestinations.map((dest) => (
-              <article
+              <Link
                 key={dest.id}
-                className="group flex flex-col justify-between overflow-hidden rounded-3xl border border-slate-200/80 bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-indigo-200 hover:shadow-xl"
+                href={`/destinations/${dest.id}`}
+                className="group relative overflow-hidden rounded-2xl border border-[#E5E7EB] bg-white shadow-2xs hover:shadow-xl hover:border-[#D1D5DB] transition duration-300 flex flex-col justify-between"
               >
                 <div>
-                  <div className="relative h-48 overflow-hidden bg-slate-100">
-                    {dest.imageUrl ? (
-                      <img
-                        src={dest.imageUrl}
-                        alt={dest.name}
-                        className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
-                      />
-                    ) : (
-                      <div className="flex h-full items-center justify-center bg-gradient-to-tr from-indigo-500 to-violet-600 text-5xl text-white">
-                        🗺️
-                      </div>
-                    )}
-                    <div className="absolute inset-0 bg-gradient-to-t from-slate-950/60 via-slate-900/10 to-transparent" />
-                    
-                    <div className="absolute top-3 left-3 flex flex-wrap gap-1.5">
-                      <span className="rounded-full bg-indigo-600 px-3 py-1 text-[10px] font-extrabold uppercase tracking-wider text-white shadow-sm">
-                        Popular
-                      </span>
-                      {dest.category && (
-                        <span className="rounded-full bg-white/90 backdrop-blur-md px-3 py-1 text-[10px] font-extrabold text-slate-900 shadow-sm">
-                          {dest.category}
-                        </span>
-                      )}
-                    </div>
+                  <div className="relative h-48 w-full overflow-hidden bg-slate-100">
+                    <img
+                      src={
+                        dest.imageUrl ||
+                        "https://images.unsplash.com/photo-1502602898657-3e91760cbb34?auto=format&fit=crop&w=600&q=80"
+                      }
+                      alt={dest.name}
+                      className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-[#111827]/70 via-transparent to-transparent" />
 
-                    <div className="absolute bottom-3 left-4 right-4 text-white">
-                      <h3 className="text-xl font-extrabold drop-shadow-xs">{dest.name}</h3>
-                      <p className="text-xs font-bold text-indigo-200">
-                        📍 {dest.city || dest.country}{dest.city && dest.country ? `, ${dest.country}` : ""}
+                    <button
+                      onClick={(e) => toggleFavorite(dest.id, e)}
+                      className="absolute top-3 right-3 flex h-8 w-8 items-center justify-center rounded-full bg-white/80 backdrop-blur-xs text-[#111827] hover:bg-white"
+                    >
+                      <Heart className={`h-4 w-4 ${favorites.includes(dest.id) ? "fill-rose-500 text-rose-500" : ""}`} />
+                    </button>
+
+                    <div className="absolute bottom-3 left-3 right-3 text-white">
+                      <h3 className="text-lg font-bold">{dest.name}</h3>
+                      <p className="text-xs text-white/80 flex items-center gap-1">
+                        <MapPin className="h-3 w-3 text-indigo-400" /> {dest.city || dest.country || "Explore"}
                       </p>
                     </div>
                   </div>
 
-                  <div className="p-5">
-                    <p className="line-clamp-3 text-xs leading-relaxed text-slate-500">
-                      {dest.description || "Explore breathtaking landmarks, local culinary scenes, and rich cultural heritage."}
+                  <div className="p-4">
+                    <p className="line-clamp-2 text-xs leading-relaxed text-[#6B7280]">
+                      {dest.description || "Discover local attractions, culture, and live weather conditions."}
                     </p>
                   </div>
                 </div>
 
-                <div className="flex items-center justify-between gap-2 border-t border-slate-100 p-4">
-                  <Link
-                    href={`/destinations/${dest.id}`}
-                    className="flex-1 rounded-xl bg-indigo-50 py-2.5 text-center text-xs font-extrabold text-indigo-700 transition hover:bg-indigo-600 hover:text-white"
-                  >
-                    Explore Destination →
-                  </Link>
+                <div className="flex items-center justify-between border-t border-[#F1F1EF] p-4 text-xs font-semibold text-[#4338CA]">
+                  <span>Explore Destination</span>
+                  <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
                 </div>
-              </article>
+              </Link>
             ))}
           </div>
         )}
-      </section>
+      </div>
     </AppShell>
   );
 }

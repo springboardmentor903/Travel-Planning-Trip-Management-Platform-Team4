@@ -6,6 +6,7 @@ import com.tripnest.tripnest_backend.dto.ExpenseCategorySummary;
 import com.tripnest.tripnest_backend.dto.ExpenseResponse;
 import com.tripnest.tripnest_backend.dto.RemainingBudgetResponse;
 import com.tripnest.tripnest_backend.dto.UpdateExpenseRequest;
+import com.tripnest.tripnest_backend.entity.NotificationType;
 import com.tripnest.tripnest_backend.entity.Budget;
 import com.tripnest.tripnest_backend.entity.Expense;
 import com.tripnest.tripnest_backend.entity.Trip;
@@ -33,6 +34,7 @@ public class ExpenseService {
     private final BudgetRepository budgetRepository;
     private final TripMembershipRepository tripMembershipRepository;
     private final TripAccessService tripAccessService;
+    private final NotificationService notificationService;
 
     @Transactional
     public ExpenseResponse createExpense(Integer tripId, CreateExpenseRequest request, String authenticatedUserEmail) {
@@ -73,6 +75,17 @@ public class ExpenseService {
         expense.setReceiptLink(request.getReceiptLink());
 
         Expense savedExpense = expenseRepository.save(expense);
+
+        if (!trip.getUser().getId().equals(payer.getId())) {
+            notificationService.createNotification(
+                    trip.getUser(),
+                    "New Expense Added 💰",
+                    payer.getName() + " added an expense of $" + request.getAmount() + " (" + request.getCategory() + ") to '" + trip.getTitle() + "'.",
+                    NotificationType.EXPENSE_ADDED,
+                    tripId
+            );
+        }
+
         return mapToResponse(savedExpense);
     }
 

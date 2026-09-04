@@ -26,6 +26,7 @@ public class JoinRequestService {
     private final UserRepository userRepository;
     private final TripMembershipRepository tripMembershipRepository;
     private final TripAccessService tripAccessService;
+    private final NotificationService notificationService;
 
     @Transactional(readOnly = true)
     public List<TripSearchResponse> searchTripsByName(String name) {
@@ -63,6 +64,40 @@ public class JoinRequestService {
         joinRequest.setStatus(JoinRequestStatus.PENDING);
 
         JoinRequest savedRequest = joinRequestRepository.save(joinRequest);
+
+        String message = user.getName() + " requested to join your trip: " + trip.getTitle();
+        java.util.Set<Integer> notifiedUserIds = new java.util.HashSet<>();
+
+        // 1. Notify Primary Trip Owner
+        if (trip.getUser() != null && !trip.getUser().getId().equals(user.getId())) {
+            notificationService.createNotification(
+                    trip.getUser(),
+                    "New Join Request",
+                    message,
+                    NotificationType.JOIN_REQUEST,
+                    trip.getId()
+            );
+            notifiedUserIds.add(trip.getUser().getId());
+        }
+
+        // 2. Notify any additional GROUP_ADMIN members of the trip
+        List<TripMembership> groupAdmins = tripMembershipRepository.findByTripIdAndRole(tripId, MembershipRole.GROUP_ADMIN);
+        for (TripMembership adminMem : groupAdmins) {
+            User adminUser = adminMem.getUser();
+            if (adminUser != null
+                    && !adminUser.getId().equals(user.getId())
+                    && !notifiedUserIds.contains(adminUser.getId())) {
+                notificationService.createNotification(
+                        adminUser,
+                        "New Join Request",
+                        message,
+                        NotificationType.JOIN_REQUEST,
+                        trip.getId()
+                );
+                notifiedUserIds.add(adminUser.getId());
+            }
+        }
+
         return mapToResponse(savedRequest);
     }
 
@@ -103,6 +138,15 @@ public class JoinRequestService {
         joinRequest.setReviewedBy(adminUser);
 
         JoinRequest updatedRequest = joinRequestRepository.save(joinRequest);
+
+        notificationService.createNotification(
+                requester,
+                "Join Request Approved",
+                "Your request to join the trip '" + joinRequest.getTrip().getTitle() + "' has been approved.",
+                NotificationType.JOIN_REQUEST_APPROVED,
+                tripId
+        );
+
         return mapToResponse(updatedRequest);
     }
 
@@ -125,6 +169,15 @@ public class JoinRequestService {
         joinRequest.setReviewedBy(adminUser);
 
         JoinRequest updatedRequest = joinRequestRepository.save(joinRequest);
+
+        notificationService.createNotification(
+                joinRequest.getRequester(),
+                "Join Request Rejected",
+                "Your request to join the trip '" + joinRequest.getTrip().getTitle() + "' has been rejected.",
+                NotificationType.JOIN_REQUEST_REJECTED,
+                tripId
+        );
+
         return mapToResponse(updatedRequest);
     }
 

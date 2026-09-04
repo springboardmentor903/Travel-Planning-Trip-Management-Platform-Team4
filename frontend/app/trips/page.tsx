@@ -6,7 +6,20 @@ import { useEffect, useMemo, useState } from "react";
 import { deleteTrip, getDestinations, getTrips } from "../../lib/api";
 import type { Destination, Trip } from "../../lib/types";
 import TripSearchModal from "../../components/trips/TripSearchModal";
-
+import {
+  Calendar,
+  MapPin,
+  Plus,
+  RefreshCw,
+  Search,
+  Trash2,
+  Edit,
+  Clock,
+  Wallet,
+  Compass,
+  CheckCircle2,
+  Sparkles,
+} from "lucide-react";
 
 export default function TripsPage() {
   const [trips, setTrips] = useState<Trip[]>([]);
@@ -18,7 +31,6 @@ export default function TripsPage() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [searchModalOpen, setSearchModalOpen] = useState(false);
 
-  // Search and Filter Tab state
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState<"All" | "Active" | "Upcoming" | "Completed">("All");
 
@@ -79,9 +91,7 @@ export default function TripsPage() {
   }, [trips]);
 
   const upcomingCount = trips.length - completedCount - activeCount;
-  const totalBudget = trips.reduce((sum, trip) => sum + Number(trip.budget || 0), 0);
 
-  // Filtered trips evaluation
   const filteredTrips = useMemo(() => {
     return trips.filter((trip) => {
       const matchesSearch =
@@ -100,428 +110,217 @@ export default function TripsPage() {
 
   return (
     <AppShell>
-      {/* Top Header & Core Actions */}
-      <div className="mb-8 flex flex-col justify-between gap-5 sm:flex-row sm:items-center">
+      {/* HEADER & TOP ACTIONS */}
+      <div className="mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <div className="flex items-center gap-2">
-            <span className="rounded-full bg-indigo-100 px-3 py-1 text-xs font-extrabold text-indigo-700">
-              Trip History
-            </span>
-            <span className="text-xs font-bold text-slate-400">•</span>
-            <span className="text-xs font-semibold text-slate-500">Plan better. Travel smarter.</span>
-          </div>
-          <h1 className="mt-1.5 text-3xl font-extrabold tracking-tight text-slate-900 sm:text-4xl">
-            My Travel Workspace
-          </h1>
+          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-[#111827]">My Trips</h1>
+          <p className="text-xs text-[#6B7280]">Manage your travel itineraries, expenses, and co-travelers.</p>
         </div>
 
         <div className="flex flex-wrap items-center gap-3">
           <button
             onClick={loadData}
-            className="rounded-2xl border border-slate-200/80 bg-white px-4 py-2.5 text-xs font-bold text-slate-700 shadow-sm transition hover:bg-slate-50"
+            className="inline-flex items-center gap-2 rounded-xl border border-[#E5E7EB] bg-white px-3.5 py-2.5 text-xs font-semibold text-[#111827] shadow-2xs hover:bg-[#FAFAF9]"
           >
-            Refresh
+            <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
+            <span>Refresh</span>
           </button>
+
           <button
             onClick={() => setSearchModalOpen(true)}
-            className="rounded-2xl border border-indigo-200 bg-indigo-50/80 px-4 py-2.5 text-xs font-bold text-indigo-700 transition hover:bg-indigo-100/80"
+            className="inline-flex items-center gap-2 rounded-xl border border-indigo-200 bg-indigo-50/70 px-3.5 py-2.5 text-xs font-semibold text-[#4338CA] hover:bg-indigo-100"
           >
-            🔍 Find & Join Trip
+            <Search className="h-3.5 w-3.5" />
+            <span>Find & Join Trip</span>
           </button>
+
           <Link
             href="/trips/new"
-            className="inline-flex items-center gap-1.5 rounded-2xl bg-gradient-to-r from-indigo-600 via-indigo-600 to-violet-600 px-5 py-2.5 text-xs font-extrabold text-white shadow-md shadow-indigo-200 transition duration-200 hover:opacity-95 hover:shadow-lg"
+            className="inline-flex items-center gap-2 rounded-xl bg-[#4338CA] px-4 py-2.5 text-xs font-semibold text-white shadow-xs hover:bg-[#3730A3]"
           >
-            <span>+</span> Create New Trip
+            <Plus className="h-4 w-4" />
+            <span>Plan New Trip</span>
           </Link>
         </div>
       </div>
 
-      {/* Global Notifications */}
       {notification && (
-        <div
-          className={`mb-6 flex items-center justify-between rounded-2xl border p-4 text-xs font-bold ${
-            notification.type === "success"
-              ? "border-emerald-200 bg-emerald-50 text-emerald-800"
-              : "border-red-200 bg-red-50 text-red-800"
-          }`}
-        >
+        <div className="mb-6 rounded-xl border border-emerald-200 bg-emerald-50 p-3.5 text-xs font-semibold text-emerald-700 flex items-center justify-between">
           <span>{notification.message}</span>
-          <button
-            onClick={() => setNotification(null)}
-            className="ml-4 text-[10px] font-extrabold uppercase tracking-wider opacity-75 hover:opacity-100"
-          >
-            Dismiss
-          </button>
+          <button onClick={() => setNotification(null)} className="underline">Dismiss</button>
         </div>
       )}
 
       {error && (
-        <div className="mb-6 flex flex-col justify-between gap-3 rounded-2xl border border-red-200 bg-red-50 p-4 text-xs font-bold text-red-700 sm:flex-row sm:items-center">
-          <span>Unable to load your trips.</span>
-          <button
-            onClick={loadData}
-            className="rounded-xl border border-red-300 bg-white px-3.5 py-1.5 text-xs font-extrabold text-red-700 shadow-xs hover:bg-red-100"
-          >
-            Try Again
-          </button>
+        <div className="mb-6 rounded-xl border border-rose-200 bg-rose-50 p-3.5 text-xs font-semibold text-rose-700">
+          {error}
         </div>
       )}
 
-      {/* Travel Overview Statistics Cards */}
-      <section className="mb-9">
-        <h2 className="mb-3.5 text-xs font-extrabold uppercase tracking-wider text-slate-400">
-          Your Travel Overview
-        </h2>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <Stat
-            title="Total Trips"
-            value={loading ? "…" : String(trips.length)}
-            subtitle="Trips planned"
-            icon="🧳"
-            color="indigo"
-          />
-          <Stat
-            title="Active Now"
-            value={loading ? "…" : String(activeCount)}
-            subtitle="Currently travelling"
-            icon="✈️"
-            color="emerald"
-          />
-          <Stat
-            title="Upcoming"
-            value={loading ? "…" : String(upcomingCount)}
-            subtitle="Trips coming soon"
-            icon="📅"
-            color="violet"
-          />
-          <Stat
-            title="Completed"
-            value={loading ? "…" : String(completedCount)}
-            subtitle="Trips completed"
-            icon="✓"
-            color="slate"
-          />
-        </div>
-      </section>
+      {/* OVERVIEW STATS */}
+      <div className="grid gap-4 sm:grid-cols-4 mb-8">
+        <StatCard title="Total Trips" value={trips.length} subtitle="All planned" icon={<Compass className="h-5 w-5 text-[#4338CA]" />} />
+        <StatCard title="Active Now" value={activeCount} subtitle="Currently traveling" icon={<Sparkles className="h-5 w-5 text-emerald-600" />} />
+        <StatCard title="Upcoming" value={upcomingCount} subtitle="Coming soon" icon={<Clock className="h-5 w-5 text-indigo-500" />} />
+        <StatCard title="Completed" value={completedCount} subtitle="Past journeys" icon={<CheckCircle2 className="h-5 w-5 text-[#6B7280]" />} />
+      </div>
 
-      {/* Featured Destinations Section */}
-      {destinations.length > 0 && (
-        <section className="mb-10 rounded-3xl border border-slate-200/80 bg-white p-6 shadow-sm sm:p-7">
-          <div className="mb-5 flex items-center justify-between">
-            <div>
-              <h2 className="flex items-center gap-2 text-xl font-extrabold text-slate-900">
-                <span>🌟</span> Featured Destinations
-              </h2>
-              <p className="mt-0.5 text-xs text-slate-500">Discover popular places for your next journey</p>
-            </div>
-            <Link
-              href="/destinations"
-              className="text-xs font-extrabold text-indigo-600 hover:text-indigo-700"
-            >
-              Explore All →
-            </Link>
+      {/* TRIPS GRID WITH SEARCH & FILTER TABS */}
+      <div className="rounded-3xl border border-[#E5E7EB] bg-white p-6 shadow-2xs">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+          <div className="relative min-w-[240px]">
+            <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[#9CA3AF]" />
+            <input
+              type="text"
+              placeholder="Search by title or destination..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full rounded-xl border border-[#E5E7EB] bg-[#FAFAF9] py-2 pl-10 pr-4 text-xs font-medium text-[#111827] outline-none focus:border-[#4338CA] focus:bg-white"
+            />
           </div>
 
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {destinations.slice(0, 4).map((dest) => (
-              <div
-                key={dest.id}
-                className="group relative overflow-hidden rounded-2xl border border-slate-200/70 bg-slate-50 transition duration-300 hover:-translate-y-1 hover:shadow-md"
-              >
-                <div className="relative h-32 w-full bg-slate-200">
-                  {dest.imageUrl ? (
-                    <img
-                      src={dest.imageUrl}
-                      alt={dest.name}
-                      className="h-full w-full object-cover transition duration-500 group-hover:scale-110"
-                    />
-                  ) : (
-                    <div className="flex h-full items-center justify-center bg-gradient-to-tr from-indigo-500 to-violet-600 text-3xl">
-                      🗺️
-                    </div>
-                  )}
-                  <div className="absolute inset-0 bg-gradient-to-t from-slate-950/70 via-slate-900/10 to-transparent" />
-                  <span className="absolute bottom-2.5 left-3 text-sm font-extrabold text-white">
-                    {dest.name}
-                  </span>
-                  {dest.category && (
-                    <span className="absolute top-2.5 right-2.5 rounded-full bg-white/90 px-2 py-0.5 text-[10px] font-extrabold text-slate-800 backdrop-blur-xs">
-                      {dest.category}
-                    </span>
-                  )}
-                </div>
-                <div className="flex items-center justify-between p-3">
-                  <span className="text-xs font-semibold text-slate-500">
-                    📍 {dest.country || "Global"}
-                  </span>
-                  <Link
-                    href={`/trips/new?destinationId=${dest.id}`}
-                    className="rounded-xl bg-indigo-50 px-2.5 py-1 text-[11px] font-bold text-indigo-700 transition hover:bg-indigo-600 hover:text-white"
-                  >
-                    + Plan Trip
-                  </Link>
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
-
-      {/* Main Trips Section with Filter Tabs & Search */}
-      <section className="rounded-3xl border border-slate-200/80 bg-white p-6 shadow-sm sm:p-8">
-        <div className="mb-6 flex flex-col justify-between gap-4 lg:flex-row lg:items-center">
-          <div>
-            <h2 className="text-xl font-extrabold text-slate-900">My Trips</h2>
-            <p className="mt-0.5 text-xs text-slate-500">View, search, and manage your travel itineraries</p>
-          </div>
-
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-            {/* Real-time search bar */}
-            <div className="relative min-w-[240px]">
-              <input
-                type="text"
-                placeholder="Search trip or destination…"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full rounded-2xl border border-slate-200 bg-slate-50/70 py-2 pl-9 pr-3.5 text-xs font-semibold text-slate-900 focus:border-indigo-500 focus:bg-white focus:outline-none"
-              />
-              <span className="absolute left-3 top-2.5 text-xs text-slate-400">🔍</span>
-            </div>
-
-            {/* Filter Tabs */}
-            <div className="flex rounded-2xl border border-slate-200/80 bg-slate-100/70 p-1">
-              {(["All", "Active", "Upcoming", "Completed"] as const).map((tab) => {
-                const active = activeTab === tab;
-                return (
-                  <button
-                    key={tab}
-                    onClick={() => setActiveTab(tab)}
-                    className={`rounded-xl px-3 py-1.5 text-xs font-bold transition ${
-                      active
-                        ? "bg-white text-slate-900 shadow-sm"
-                        : "text-slate-600 hover:text-slate-900"
-                    }`}
-                  >
-                    {tab}
-                  </button>
-                );
-              })}
-            </div>
+          <div className="flex rounded-xl border border-[#E5E7EB] bg-[#FAFAF9] p-1">
+            {(["All", "Active", "Upcoming", "Completed"] as const).map((tab) => {
+              const active = activeTab === tab;
+              return (
+                <button
+                  key={tab}
+                  onClick={() => setActiveTab(tab)}
+                  className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
+                    active ? "bg-white text-[#111827] shadow-2xs" : "text-[#6B7280] hover:text-[#111827]"
+                  }`}
+                >
+                  {tab}
+                </button>
+              );
+            })}
           </div>
         </div>
 
         {loading ? (
-          <LoadingState />
+          <div className="p-12 text-center text-xs text-[#6B7280]">Loading trips...</div>
         ) : filteredTrips.length === 0 ? (
-          <EmptyState isFiltered={searchQuery !== "" || activeTab !== "All"} />
+          <div className="rounded-2xl border border-dashed border-[#E5E7EB] bg-[#FAFAF9] p-12 text-center">
+            <p className="text-xs font-semibold text-[#6B7280]">No trips found matching criteria.</p>
+            <Link
+              href="/trips/new"
+              className="mt-3 inline-flex items-center gap-2 rounded-xl bg-[#4338CA] px-4 py-2 text-xs font-semibold text-white"
+            >
+              <Plus className="h-4 w-4" /> Create Trip
+            </Link>
+          </div>
         ) : (
           <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
-            {filteredTrips.map((trip) => (
-              <TripCard key={trip.id} trip={trip} onDeleteClick={() => setDeleteTarget(trip)} />
-            ))}
+            {filteredTrips.map((trip) => {
+              const status = getTripStatus(trip.startDate, trip.endDate);
+              return (
+                <article
+                  key={trip.id}
+                  className="group relative flex flex-col justify-between overflow-hidden rounded-2xl border border-[#E5E7EB] bg-white p-5 shadow-2xs hover:shadow-md hover:border-[#D1D5DB] transition duration-200"
+                >
+                  <div>
+                    <div className="relative h-40 w-full overflow-hidden rounded-xl bg-slate-100 mb-4">
+                      <img
+                        src={
+                          trip.destination?.imageUrl ||
+                          "https://images.unsplash.com/photo-1488646953014-85cb44e25828?auto=format&fit=crop&w=600&q=80"
+                        }
+                        alt={trip.title}
+                        className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                      />
+                      <span className={`absolute top-3 right-3 rounded-full px-3 py-1 text-[10px] font-bold text-white backdrop-blur-xs ${
+                        status === "Active" ? "bg-emerald-600" : status === "Upcoming" ? "bg-[#4338CA]" : "bg-slate-800"
+                      }`}>
+                        {status}
+                      </span>
+                    </div>
+
+                    <h3 className="font-bold text-base text-[#111827] group-hover:text-[#4338CA] transition">{trip.title}</h3>
+                    <p className="mt-1 text-xs text-[#6B7280] flex items-center gap-1">
+                      <MapPin className="h-3.5 w-3.5 text-[#4338CA]" />
+                      <span>{trip.destination?.name || "Destination"}, {trip.destination?.country}</span>
+                    </p>
+
+                    <div className="mt-4 flex flex-wrap gap-2 text-xs text-[#6B7280]">
+                      <span className="flex items-center gap-1 rounded-lg bg-[#FAFAF9] border border-[#E5E7EB] px-2.5 py-1">
+                        <Calendar className="h-3 w-3" /> {formatDate(trip.startDate)} – {formatDate(trip.endDate)}
+                      </span>
+                      {trip.budget && (
+                        <span className="flex items-center gap-1 rounded-lg bg-[#FAFAF9] border border-[#E5E7EB] px-2.5 py-1 font-semibold text-[#111827]">
+                          <Wallet className="h-3 w-3 text-emerald-600" /> ₹{trip.budget.toLocaleString("en-IN")}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="mt-6 flex items-center justify-between border-t border-[#F1F1EF] pt-4">
+                    <Link
+                      href={`/trips/${trip.id}`}
+                      className="rounded-lg bg-indigo-50 px-3 py-1.5 text-xs font-semibold text-[#4338CA] hover:bg-indigo-100 transition"
+                    >
+                      View Details
+                    </Link>
+
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => setDeleteTarget(trip)}
+                        className="rounded-lg p-1.5 text-[#9CA3AF] hover:bg-rose-50 hover:text-rose-600 transition"
+                        title="Delete trip"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </div>
+                </article>
+              );
+            })}
           </div>
         )}
-      </section>
+      </div>
 
-      {/* Delete Confirmation Modal */}
+      {/* DELETE MODAL */}
       {deleteTarget && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl">
-            <h3 className="text-lg font-extrabold text-slate-900">Delete Trip</h3>
-            <p className="mt-2 text-sm leading-relaxed text-slate-600">
-              Are you sure you want to delete <span className="font-bold text-slate-900">"{deleteTarget.title}"</span>? This action cannot be undone.
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#111827]/50 backdrop-blur-xs p-4">
+          <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-2xl">
+            <h3 className="text-base font-bold text-[#111827]">Confirm Deletion</h3>
+            <p className="mt-2 text-xs text-[#6B7280]">
+              Are you sure you want to delete trip <span className="font-bold text-[#111827]">"{deleteTarget.title}"</span>?
             </p>
             <div className="mt-6 flex justify-end gap-3">
               <button
                 disabled={isDeleting}
                 onClick={() => setDeleteTarget(null)}
-                className="rounded-xl border border-slate-200 px-4 py-2.5 text-xs font-bold text-slate-600 hover:bg-slate-50 disabled:opacity-50"
+                className="rounded-xl border border-[#E5E7EB] px-4 py-2 text-xs font-semibold text-[#6B7280]"
               >
                 Cancel
               </button>
               <button
                 disabled={isDeleting}
                 onClick={handleDelete}
-                className="rounded-xl bg-red-600 px-4 py-2.5 text-xs font-bold text-white hover:bg-red-700 disabled:opacity-50"
+                className="rounded-xl bg-rose-600 px-4 py-2 text-xs font-semibold text-white hover:bg-rose-700"
               >
-                {isDeleting ? "Deleting…" : "Confirm Delete"}
+                {isDeleting ? "Deleting..." : "Delete"}
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Trip Search & Join Modal */}
+      {/* SEARCH MODAL */}
       <TripSearchModal isOpen={searchModalOpen} onClose={() => setSearchModalOpen(false)} />
     </AppShell>
   );
 }
 
-function TripCard({ trip, onDeleteClick }: { trip: Trip; onDeleteClick: () => void }) {
-  const status = getTripStatus(trip.startDate, trip.endDate);
-
+function StatCard({ title, value, subtitle, icon }: { title: string; value: number | string; subtitle: string; icon: React.ReactNode }) {
   return (
-    <article className="group flex flex-col justify-between rounded-3xl border border-slate-200/80 bg-white p-5 transition-all duration-300 hover:-translate-y-1 hover:border-indigo-200 hover:shadow-xl">
-      <div>
-        {/* Cover image header */}
-        <div className="relative mb-4 h-40 overflow-hidden rounded-2xl bg-slate-100">
-          {trip.destination?.imageUrl ? (
-            <img
-              src={trip.destination.imageUrl}
-              alt={trip.destination.name}
-              className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
-            />
-          ) : (
-            <div className="flex h-full items-center justify-center bg-gradient-to-tr from-indigo-500 via-indigo-600 to-violet-600 text-4xl text-white">
-              🗺️
-            </div>
-          )}
-          <span
-            className={`absolute top-3 right-3 rounded-full px-3 py-1 text-[11px] font-extrabold shadow-sm ${
-              status === "Active"
-                ? "bg-emerald-500 text-white"
-                : status === "Upcoming"
-                ? "bg-indigo-600 text-white"
-                : "bg-slate-700 text-white"
-            }`}
-          >
-            {status}
-          </span>
-        </div>
-
-        {/* Title & Location */}
-        <h3 className="line-clamp-1 text-lg font-extrabold text-slate-900 group-hover:text-indigo-600 transition" title={trip.title}>
-          {trip.title}
-        </h3>
-        <p className="mt-1 text-xs font-bold text-indigo-600">
-          📍 {trip.destination?.name ? `${trip.destination.name}${trip.destination.country ? `, ${trip.destination.country}` : ""}` : "Destination Unset"}
-        </p>
-
-        {/* Date and Budget Pill Badges */}
-        <div className="mt-4 flex flex-wrap items-center gap-2 text-xs font-semibold text-slate-600">
-          <span className="rounded-xl border border-slate-100 bg-slate-50 px-3 py-1">
-            📅 {formatDate(trip.startDate)} – {formatDate(trip.endDate)}
-          </span>
-          <span className="rounded-xl border border-slate-100 bg-slate-50 px-3 py-1">
-            💰 {trip.budget == null ? "No budget set" : formatBudget(Number(trip.budget))}
-          </span>
-        </div>
-
-        {/* Notes preview */}
-        {trip.notes && (
-          <p className="mt-3 line-clamp-2 text-xs leading-relaxed text-slate-500">
-            {trip.notes}
-          </p>
-        )}
-      </div>
-
-      {/* Action Footer */}
-      <div className="mt-6 flex items-center justify-between border-t border-slate-100 pt-4">
-        <Link
-          href={`/trips/${trip.id}`}
-          className="rounded-xl bg-indigo-50 px-3.5 py-2 text-xs font-extrabold text-indigo-700 transition hover:bg-indigo-600 hover:text-white"
-        >
-          View Details
-        </Link>
-        <div className="flex items-center gap-2">
-          <Link
-            href={`/trips/${trip.id}/edit`}
-            className="rounded-xl border border-slate-200 px-3 py-2 text-xs font-bold text-slate-600 transition hover:bg-slate-50 hover:text-slate-900"
-          >
-            Edit
-          </Link>
-          <button
-            onClick={onDeleteClick}
-            className="rounded-xl border border-red-200 px-3 py-2 text-xs font-bold text-red-600 transition hover:bg-red-50 hover:text-red-700"
-          >
-            Delete
-          </button>
-        </div>
-      </div>
-    </article>
-  );
-}
-
-function Stat({
-  title,
-  value,
-  subtitle,
-  icon,
-  color,
-}: {
-  title: string;
-  value: string;
-  subtitle: string;
-  icon: string;
-  color: "indigo" | "emerald" | "violet" | "slate";
-}) {
-  const iconBg =
-    color === "indigo"
-      ? "bg-indigo-50 text-indigo-600 border-indigo-100"
-      : color === "emerald"
-      ? "bg-emerald-50 text-emerald-600 border-emerald-100"
-      : color === "violet"
-      ? "bg-violet-50 text-violet-600 border-violet-100"
-      : "bg-slate-100 text-slate-700 border-slate-200";
-
-  return (
-    <div className="flex flex-col justify-between rounded-3xl border border-slate-200/80 bg-white p-5 shadow-sm transition hover:border-indigo-200 hover:shadow-md">
+    <div className="rounded-2xl border border-[#E5E7EB] bg-white p-5 shadow-2xs">
       <div className="flex items-center justify-between">
-        <span className="text-xs font-extrabold uppercase tracking-wider text-slate-500">{title}</span>
-        <div className={`flex h-10 w-10 items-center justify-center rounded-2xl border ${iconBg} text-lg font-bold`}>
-          {icon}
-        </div>
+        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#FAFAF9]">{icon}</div>
+        <span className="text-2xl font-extrabold text-[#111827]">{value}</span>
       </div>
-      <div className="mt-3">
-        <strong className="text-3xl font-extrabold text-slate-900">{value}</strong>
-        <p className="mt-0.5 text-xs font-medium text-slate-400">{subtitle}</p>
-      </div>
-    </div>
-  );
-}
-
-function LoadingState() {
-  return (
-    <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
-      {[1, 2, 3].map((i) => (
-        <div key={i} className="animate-pulse rounded-3xl border border-slate-200/80 bg-white p-5 shadow-sm">
-          <div className="mb-4 h-40 rounded-2xl bg-slate-200/80" />
-          <div className="mb-2 h-5 w-3/4 rounded-lg bg-slate-200/80" />
-          <div className="mb-4 h-4 w-1/2 rounded-lg bg-slate-200/70" />
-          <div className="mb-4 flex gap-2">
-            <div className="h-6 w-28 rounded-xl bg-slate-200/60" />
-            <div className="h-6 w-24 rounded-xl bg-slate-200/60" />
-          </div>
-          <div className="mt-4 h-10 rounded-xl bg-slate-200/50" />
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function EmptyState({ isFiltered }: { isFiltered: boolean }) {
-  return (
-    <div className="rounded-3xl border border-dashed border-slate-300 p-12 text-center">
-      <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-indigo-50 text-2xl">
-        🧳
-      </div>
-      <h3 className="mt-4 text-lg font-extrabold text-slate-900">
-        {isFiltered ? "No matching trips found" : "No trips planned yet"}
-      </h3>
-      <p className="mt-1 text-xs text-slate-500">
-        {isFiltered
-          ? "Try adjusting your search query or filter tab."
-          : "Start by planning your first trip destination and itinerary dates."}
-      </p>
-      {!isFiltered && (
-        <Link
-          href="/trips/new"
-          className="mt-5 inline-flex rounded-2xl bg-indigo-600 px-5 py-2.5 text-xs font-extrabold text-white shadow-md shadow-indigo-100 hover:bg-indigo-700"
-        >
-          + Create New Trip
-        </Link>
-      )}
+      <p className="mt-3 text-xs font-semibold text-[#111827]">{title}</p>
+      <p className="text-[11px] text-[#6B7280]">{subtitle}</p>
     </div>
   );
 }
@@ -539,21 +338,9 @@ function getTripStatus(startDateStr: string, endDateStr: string): "Upcoming" | "
 
 function formatDate(value: string) {
   if (!value) return "";
-  return new Date(`${value}T00:00:00`).toLocaleDateString(undefined, {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  });
+  try {
+    return new Date(`${value}T00:00:00`).toLocaleDateString(undefined, { day: "2-digit", month: "short" });
+  } catch {
+    return value;
+  }
 }
-
-function formatBudget(value: number) {
-  return new Intl.NumberFormat("en-IN", {
-    style: "currency",
-    currency: "INR",
-    maximumFractionDigits: 0,
-  }).format(value);
-}
-
-
-
-
