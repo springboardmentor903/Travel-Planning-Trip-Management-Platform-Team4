@@ -94,7 +94,7 @@ public class TripService {
         tripRepository.delete(trip);
     }
 
-    private TripResponse mapToResponse(Trip trip) {
+    public TripResponse mapToResponse(Trip trip) {
         Destination d = trip.getDestination();
         DestinationResponse destinationResponse = new DestinationResponse(
                 d.getId(),

@@ -1,10 +1,6 @@
 package com.tripnest.tripnest_backend.service;
 
-import com.tripnest.tripnest_backend.dto.CategorySummaryResponse;
-import com.tripnest.tripnest_backend.dto.CreateExpenseRequest;
-import com.tripnest.tripnest_backend.dto.ExpenseCategorySummary;
-import com.tripnest.tripnest_backend.dto.ExpenseResponse;
-import com.tripnest.tripnest_backend.dto.UpdateExpenseRequest;
+import com.tripnest.tripnest_backend.dto.*;
 import com.tripnest.tripnest_backend.entity.Budget;
 import com.tripnest.tripnest_backend.entity.Expense;
 import com.tripnest.tripnest_backend.entity.Trip;
@@ -19,7 +15,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.time.LocalDate;
 import java.util.List;
 
 @Service
@@ -142,6 +137,14 @@ public class ExpenseService {
     }
 
     @Transactional(readOnly = true)
+    public List<CategorySummaryResponse> getCategorySummaryForUser(Integer userId) {
+        List<ExpenseCategorySummary> summaries = expenseRepository.findCategorySummariesByUserId(userId);
+        return summaries.stream()
+                .map(s -> new CategorySummaryResponse(s.getCategory(), s.getTotalAmount()))
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
     public BigDecimal getRemainingBudget(Integer tripId, String authenticatedUserEmail) {
         Trip trip = findAndValidateTripAccess(tripId, authenticatedUserEmail);
 
@@ -162,7 +165,7 @@ public class ExpenseService {
     }
 
     @Transactional(readOnly = true)
-    public com.tripnest.tripnest_backend.dto.RemainingBudgetResponse getRemainingBudgetDetails(Integer tripId, String authenticatedUserEmail) {
+    public RemainingBudgetResponse getRemainingBudgetDetails(Integer tripId, String authenticatedUserEmail) {
         Trip trip = findAndValidateTripAccess(tripId, authenticatedUserEmail);
 
         BigDecimal totalBudget = BigDecimal.ZERO;
@@ -179,7 +182,7 @@ public class ExpenseService {
         }
 
         BigDecimal remainingBudget = totalBudget.subtract(totalExpenses);
-        return new com.tripnest.tripnest_backend.dto.RemainingBudgetResponse(totalBudget, totalExpenses, remainingBudget);
+        return new RemainingBudgetResponse(totalBudget, totalExpenses, remainingBudget);
     }
 
     private Trip findAndValidateTripAccess(Integer tripId, String authenticatedUserEmail) {

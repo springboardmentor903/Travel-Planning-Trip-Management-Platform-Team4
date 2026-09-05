@@ -140,3 +140,55 @@ export type RemainingBudget = {
   remainingBudget: number;
 };
 
+export type BudgetOverview = {
+  totalBudgeted: number;
+  totalSpent: number;
+};
+
+export type DestinationVisitStats = {
+  destination: string;
+  visitCount: number;
+};
+
+export type TravelStats = {
+  totalTripsTaken: number;
+  totalDestinationsVisited: number;
+  totalAmountSpent: number;
+};
+
+export type TravelerDashboard = {
+  upcomingTrips: Trip[];
+  budgetOverview: BudgetOverview;
+  expenseSummary: CategorySummary[];
+  destinations: DestinationVisitStats[];
+  travelStats: TravelStats;
+};
+
+export type UserAnalytics = {
+  totalUsers: number;
+};
+
+export type TripAnalytics = {
+  totalTrips: number;
+  activeTrips: number;
+  completedTrips: number;
+};
+
+export type DestinationAnalytics = {
+  destination: string;
+  tripCount: number;
+};
+
+export type PlatformStats = {
+  totalExpenses: number;
+  totalNotificationsSent: number;
+};
+
+export type AdminDashboard = {
+  userAnalytics: UserAnalytics;
+  tripAnalytics: TripAnalytics;
+  destinationAnalytics: DestinationAnalytics[];
+  platformStats: PlatformStats;
+};
+
+

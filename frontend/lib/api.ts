@@ -1,5 +1,6 @@
 import type {
   Activity,
+  AdminDashboard,
   CategorySummary,
   CreateActivityRequest,
   CreateExpenseRequest,
@@ -10,6 +11,7 @@ import type {
   ItineraryDay,
   PlaceInfo,
   RemainingBudget,
+  TravelerDashboard,
   Trip,
   UpdateActivityRequest,
   UpdateExpenseRequest,
@@ -232,4 +234,15 @@ export async function getRemainingBudget(
 ): Promise<RemainingBudget> {
   return apiFetch<RemainingBudget>(`/trips/${tripId}/expenses/remaining-budget`);
 }
+
+/* --- Dashboard Helper APIs --- */
+
+export async function getTravelerDashboard(): Promise<TravelerDashboard> {
+  return apiFetch<TravelerDashboard>("/dashboard/traveler");
+}
+
+export async function getAdminDashboard(): Promise<AdminDashboard> {
+  return apiFetch<AdminDashboard>("/dashboard/admin");
+}
+
 
