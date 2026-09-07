@@ -3,6 +3,21 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import {
+  LayoutDashboard,
+  Compass,
+  Calendar,
+  MapPin,
+  Bookmark,
+  User as UserIcon,
+  Settings,
+  LogOut,
+  Menu,
+  X,
+  Plane,
+  ChevronRight,
+} from "lucide-react";
+import NotificationBell from "./NotificationBell";
 
 type User = {
   id?: number | string;
@@ -11,10 +26,11 @@ type User = {
 };
 
 const navItems = [
-  { href: "/dashboard", label: "Dashboard", icon: "⌂" },
-  { href: "/trips", label: "Trip History", icon: "✈" },
-  { href: "/profile", label: "Profile", icon: "◯" },
-  { href: "/settings", label: "Account Settings", icon: "⚙" },
+  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/trips", label: "My Trips", icon: Calendar },
+  { href: "/destinations", label: "Explore", icon: Compass },
+  { href: "/trips/new", label: "Trip Planner", icon: MapPin },
+  { href: "/profile", label: "Favorites", icon: Bookmark },
 ];
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
@@ -38,7 +54,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         setUser(null);
       }
     }
-  }, []);
+  }, [router]);
 
   const logout = () => {
     localStorage.removeItem("token");
@@ -58,142 +74,197 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     pathname === "/dashboard"
       ? "Dashboard"
       : pathname === "/trips"
-        ? "Trip History"
-        : pathname === "/profile"
-          ? "Profile"
-          : "Account Settings";
+      ? "My Trips"
+      : pathname === "/destinations"
+      ? "Explore Destinations"
+      : pathname === "/trips/new"
+      ? "Trip Planner"
+      : pathname === "/profile"
+      ? "Profile & Favorites"
+      : "Settings";
 
   return (
-    <div className="min-h-screen bg-slate-50/80 font-sans text-slate-900 antialiased">
-      {/* Desktop sidebar */}
-      <aside className="fixed inset-y-0 left-0 z-40 hidden w-72 flex-col border-r border-slate-200/80 bg-white/95 backdrop-blur-md lg:flex">
-        <div className="flex h-20 items-center gap-3 border-b border-slate-100 px-6">
-          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-tr from-indigo-600 via-indigo-600 to-violet-500 text-xl text-white shadow-lg shadow-indigo-200 transition duration-300 hover:scale-105">
-            ✈️
+    <div className="min-h-screen bg-[#FAFAF9] text-[#111827] antialiased">
+      {/* Desktop Sidebar */}
+      <aside className="fixed inset-y-0 left-0 z-40 hidden w-64 flex-col border-r border-[#E5E7EB] bg-white lg:flex">
+        {/* Logo Header */}
+        <div className="flex h-20 items-center gap-3 border-b border-[#F1F1EF] px-6">
+          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#111827] text-white">
+            <Plane className="h-5 w-5 text-indigo-400" />
           </div>
           <div>
-            <p className="text-lg font-extrabold tracking-tight text-slate-900">TripNest</p>
-            <p className="text-xs font-semibold text-indigo-600">Travel Planner Platform</p>
+            <span className="text-lg font-bold tracking-tight text-[#111827]">TripNest</span>
+            <span className="ml-1.5 text-[10px] font-semibold uppercase tracking-wider text-[#4338CA] bg-indigo-50 px-1.5 py-0.5 rounded">Pro</span>
           </div>
         </div>
 
-        <nav className="flex-1 space-y-1.5 p-4">
-          <p className="px-3 pb-2 pt-2 text-[11px] font-bold uppercase tracking-wider text-slate-400">
+        {/* Navigation Items */}
+        <nav className="flex-1 space-y-1 p-3 pt-6">
+          <p className="px-3 pb-2 text-[11px] font-semibold uppercase tracking-widest text-[#9CA3AF]">
             Workspace
           </p>
           {navItems.map((item) => {
-            const active = pathname === item.href;
+            const active = pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(item.href) && item.href.length > 5);
+            const Icon = item.icon;
             return (
               <Link
                 key={item.href}
                 href={item.href}
-                className={`flex items-center gap-3.5 rounded-2xl px-4 py-3 text-sm font-extrabold transition-all duration-200 ${
+                className={`group flex items-center justify-between rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-150 ${
                   active
-                    ? "bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-md shadow-indigo-200"
-                    : "text-slate-600 hover:bg-slate-100/70 hover:text-indigo-600"
+                    ? "border-l-[3px] border-[#4338CA] bg-[#F1F1EF] text-[#111827] font-semibold"
+                    : "text-[#6B7280] hover:bg-[#FAFAF9] hover:text-[#111827]"
                 }`}
               >
-                <span className={`flex w-5 justify-center text-lg ${active ? "text-white" : "text-slate-400 group-hover:text-indigo-600"}`}>
-                  {item.icon}
-                </span>
-                {item.label}
+                <div className="flex items-center gap-3">
+                  <Icon className={`h-4 w-4 transition-colors ${active ? "text-[#4338CA]" : "text-[#9CA3AF] group-hover:text-[#111827]"}`} />
+                  <span>{item.label}</span>
+                </div>
+                {active && <ChevronRight className="h-3.5 w-3.5 text-[#4338CA]" />}
               </Link>
             );
           })}
         </nav>
 
-        <div className="border-t border-slate-100 p-4">
-          <div className="mb-3 flex items-center gap-3 rounded-2xl border border-slate-100 bg-slate-50/80 p-3 shadow-sm">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-tr from-indigo-600 to-violet-600 text-xs font-extrabold text-white shadow-sm">
-              {initials}
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-extrabold text-slate-900">{user?.name || "Traveler"}</p>
-              <p className="truncate text-xs text-slate-500">{user?.email || "Welcome back"}</p>
-            </div>
-          </div>
-          <button
-            onClick={logout}
-            className="w-full rounded-2xl border border-slate-200/80 bg-white px-4 py-2.5 text-xs font-bold text-slate-600 shadow-sm transition hover:border-red-200 hover:bg-red-50 hover:text-red-600"
+        {/* Bottom Section */}
+        <div className="border-t border-[#F1F1EF] p-3 space-y-1">
+          <Link
+            href="/profile"
+            className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-[#6B7280] hover:bg-[#FAFAF9] hover:text-[#111827] ${
+              pathname === "/profile" ? "bg-[#F1F1EF] text-[#111827]" : ""
+            }`}
           >
-            Sign out
-          </button>
+            <UserIcon className="h-4 w-4 text-[#9CA3AF]" />
+            <span>Profile</span>
+          </Link>
+          <Link
+            href="/settings"
+            className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-[#6B7280] hover:bg-[#FAFAF9] hover:text-[#111827] ${
+              pathname === "/settings" ? "bg-[#F1F1EF] text-[#111827]" : ""
+            }`}
+          >
+            <Settings className="h-4 w-4 text-[#9CA3AF]" />
+            <span>Settings</span>
+          </Link>
+
+          {/* User Card */}
+          <div className="mt-3 flex items-center justify-between rounded-xl border border-[#E5E7EB] bg-[#FAFAF9] p-3">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#111827] text-xs font-bold text-white">
+                {initials}
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-xs font-semibold text-[#111827]">{user?.name || "Traveler"}</p>
+                <p className="truncate text-[11px] text-[#6B7280]">{user?.email || "Signed in"}</p>
+              </div>
+            </div>
+            <button
+              onClick={logout}
+              title="Sign out"
+              className="rounded-lg p-1.5 text-[#9CA3AF] hover:bg-white hover:text-[#DC2626] transition-colors"
+            >
+              <LogOut className="h-4 w-4" />
+            </button>
+          </div>
         </div>
       </aside>
 
-      {/* Mobile drawer */}
+      {/* Mobile Drawer */}
       {mobileOpen && (
         <div className="fixed inset-0 z-50 lg:hidden">
-          <button
-            aria-label="Close navigation"
-            className="absolute inset-0 bg-slate-950/40 backdrop-blur-xs"
+          <div
+            className="fixed inset-0 bg-[#111827]/40 backdrop-blur-xs transition-opacity"
             onClick={() => setMobileOpen(false)}
           />
-          <aside className="relative flex h-full w-72 flex-col bg-white shadow-2xl">
-            <div className="flex h-20 items-center justify-between border-b border-slate-100 px-5">
+          <aside className="fixed inset-y-0 left-0 flex w-72 flex-col bg-white shadow-2xl z-50">
+            <div className="flex h-20 items-center justify-between border-b border-[#F1F1EF] px-5">
               <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-tr from-indigo-600 to-violet-600 text-white">✈️</div>
-                <div>
-                  <p className="font-extrabold text-slate-900">TripNest</p>
-                  <p className="text-[11px] text-indigo-600 font-semibold">Travel Planner</p>
+                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#111827] text-white">
+                  <Plane className="h-5 w-5 text-indigo-400" />
                 </div>
+                <span className="text-lg font-bold text-[#111827]">TripNest</span>
               </div>
-              <button onClick={() => setMobileOpen(false)} className="text-2xl font-bold text-slate-400 hover:text-slate-600">×</button>
+              <button
+                onClick={() => setMobileOpen(false)}
+                className="rounded-lg p-1.5 text-[#6B7280] hover:bg-[#F1F1EF]"
+              >
+                <X className="h-5 w-5" />
+              </button>
             </div>
-            <nav className="space-y-1.5 p-4">
-              {navItems.map((item) => (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  onClick={() => setMobileOpen(false)}
-                  className={`flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-bold transition ${
-                    pathname === item.href
-                      ? "bg-indigo-600 text-white shadow-md shadow-indigo-200"
-                      : "text-slate-600 hover:bg-slate-50"
-                  }`}
-                >
-                  <span>{item.icon}</span>
-                  {item.label}
-                </Link>
-              ))}
+
+            <nav className="flex-1 space-y-1 p-4">
+              {navItems.map((item) => {
+                const Icon = item.icon;
+                const active = pathname === item.href;
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    onClick={() => setMobileOpen(false)}
+                    className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
+                      active ? "bg-[#F1F1EF] text-[#111827] font-semibold border-l-[3px] border-[#4338CA]" : "text-[#6B7280]"
+                    }`}
+                  >
+                    <Icon className="h-4 w-4 text-[#4338CA]" />
+                    <span>{item.label}</span>
+                  </Link>
+                );
+              })}
             </nav>
+
+            <div className="border-t border-[#F1F1EF] p-4">
+              <button
+                onClick={logout}
+                className="flex w-full items-center justify-center gap-2 rounded-lg border border-[#E5E7EB] py-2 text-xs font-semibold text-[#DC2626] hover:bg-[#FEF2F2]"
+              >
+                <LogOut className="h-4 w-4" />
+                Sign Out
+              </button>
+            </div>
           </aside>
         </div>
       )}
 
-      {/* Main area */}
-      <div className="min-h-screen lg:ml-72">
-        <header className="sticky top-0 z-30 border-b border-slate-200/80 bg-white/90 backdrop-blur-md">
-          <div className="mx-auto flex h-20 max-w-[1400px] items-center justify-between px-5 sm:px-8">
-            <div className="flex items-center gap-3">
+      {/* Main Content Area */}
+      <div className="min-h-screen lg:ml-64">
+        <header className="sticky top-0 z-30 border-b border-[#E5E7EB] bg-[#FAFAF9]/90 backdrop-blur-md">
+          <div className="mx-auto flex h-20 max-w-7xl items-center justify-between px-6 sm:px-10">
+            <div className="flex items-center gap-4">
               <button
                 onClick={() => setMobileOpen(true)}
-                className="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-lg font-bold shadow-xs lg:hidden"
-                aria-label="Open navigation"
+                className="flex h-9 w-9 items-center justify-center rounded-lg border border-[#E5E7EB] bg-white text-[#111827] shadow-xs lg:hidden"
+                aria-label="Open navigation drawer"
               >
-                ☰
+                <Menu className="h-5 w-5" />
               </button>
               <div>
-                <h1 className="text-base font-extrabold tracking-tight text-slate-900 sm:text-xl">{pageTitle}</h1>
-                <p className="hidden text-xs font-medium text-slate-500 sm:block">Plan better. Travel smarter.</p>
+                <h1 className="text-xl font-bold tracking-tight text-[#111827]">{pageTitle}</h1>
               </div>
             </div>
 
-            <Link
-              href="/profile"
-              className="flex items-center gap-2.5 rounded-full border border-slate-200/80 bg-white px-2.5 py-1.5 text-xs font-bold text-slate-800 shadow-sm transition hover:border-indigo-200 hover:bg-slate-50 sm:px-3.5"
-            >
-              <span className="flex h-7 w-7 items-center justify-center rounded-full bg-gradient-to-tr from-indigo-600 to-violet-600 text-[11px] font-extrabold text-white shadow-xs">
-                {initials}
-              </span>
-              <span className="hidden sm:block">{user?.name || "Profile"}</span>
-            </Link>
+            <div className="flex items-center gap-3">
+              <NotificationBell />
+              <Link
+                href="/trips/new"
+                className="hidden sm:inline-flex items-center justify-center rounded-lg bg-[#4338CA] px-4 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-[#3730A3]"
+              >
+                + New Trip
+              </Link>
+              <Link
+                href="/profile"
+                className="flex items-center gap-2.5 rounded-full border border-[#E5E7EB] bg-white p-1.5 pr-3 text-xs font-medium text-[#111827] hover:border-[#D1D5DB] transition"
+              >
+                <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[#111827] text-[11px] font-bold text-white">
+                  {initials}
+                </div>
+                <span className="hidden md:inline font-semibold">{user?.name || "Account"}</span>
+              </Link>
+            </div>
           </div>
         </header>
 
-        <main className="mx-auto w-full max-w-[1400px] px-5 py-7 sm:px-8 sm:py-9">{children}</main>
+        <main className="mx-auto max-w-7xl px-6 py-8 sm:px-10 sm:py-10">{children}</main>
       </div>
     </div>
   );
 }
-

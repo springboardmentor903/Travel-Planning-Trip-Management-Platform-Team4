@@ -47,6 +47,7 @@ export type ItineraryDay = {
   date: string | null;
   title: string;
   description: string | null;
+  activities?: Activity[];
 };
 
 export type CreateItineraryDayRequest = {
@@ -184,6 +185,146 @@ export type JoinRequestResponse = {
   reviewedAt?: string | null;
   reviewedById?: number | null;
   reviewedByName?: string | null;
+};
+
+export type NotificationType =
+  | "JOIN_REQUEST_CREATED"
+  | "JOIN_REQUEST_APPROVED"
+  | "JOIN_REQUEST_REJECTED"
+  | "MEMBER_ADDED"
+  | "EXPENSE_ADDED"
+  | "TRIP_UPDATED";
+
+export type Notification = {
+  id: number;
+  message: string;
+  type: string;
+  isRead: boolean;
+  createdAt: string;
+  title?: string;
+  recipientId?: number;
+  relatedTripId?: number | null;
+  read?: boolean;
+};
+
+export type NotificationUnreadCount = {
+  count: number;
+  unreadCount?: number;
+};
+
+export type SmartItineraryRequest = {
+  travelStyle?: string;
+  interests?: string[];
+  budgetPreference?: string;
+  pace?: string;
+  preferredStartTime?: string;
+  foodPreference?: string;
+  transportationPreference?: string;
+};
+
+export type SuggestedActivity = {
+  name: string;
+  description: string;
+  location: string;
+  category?: string;
+  startTime?: string;
+  endTime?: string;
+  estimatedDuration?: string;
+  estimatedCost?: string;
+};
+
+export type SuggestedDay = {
+  dayNumber: number;
+  date?: string;
+  title: string;
+  description: string;
+  activities: SuggestedActivity[];
+};
+
+export type SmartItineraryResponse = {
+  tripId: number;
+  destinationName: string;
+  totalDays: number;
+  suggestedDays: SuggestedDay[];
+};
+
+export type DailyStrategy = {
+  dayNumber: number;
+  theme: string;
+  strategy: string;
+};
+
+export type BudgetInsights = {
+  estimatedDailyBudget: string;
+  accommodationCost: string;
+  foodCost: string;
+  transportationCost: string;
+  activitiesCost: string;
+  totalEstimatedCost: string;
+  budgetMessage: string;
+};
+
+export type ItinerarySuggestionResponse = {
+  tripId: number;
+  destinationName: string;
+  country?: string;
+  city?: string;
+  startDate?: string;
+  endDate?: string;
+  totalDays: number;
+  totalBudget?: number;
+  tripOverview?: string;
+  dailyStrategy?: DailyStrategy[];
+  itinerary: SuggestedDay[];
+  recommendations: RecommendedPlace[];
+  planningTips: string[];
+  warnings?: string[];
+  budgetInsights?: BudgetInsights;
+};
+
+export type RecommendedPlace = {
+  name: string;
+  category: string;
+  description: string;
+  location: string;
+  estimatedDuration: string;
+  recommendedTime: string;
+  estimatedCost: string;
+  popularity: string;
+  imageUrl?: string;
+  latitude?: number;
+  longitude?: number;
+};
+
+export type ApplyActivityRequest = {
+  title?: string;
+  name?: string;
+  description?: string;
+  location?: string;
+  startTime?: string;
+  endTime?: string;
+};
+
+export type ApplyItineraryDayRequest = {
+  dayNumber: number;
+  date?: string;
+  title?: string;
+  description?: string;
+  activities?: ApplyActivityRequest[];
+};
+
+export type ApplyItinerarySuggestionsRequest = {
+  days: ApplyItineraryDayRequest[];
+};
+
+export type DestinationRecommendationResponse = {
+  tripId: number;
+  destinationId: number;
+  destinationName: string;
+  country: string;
+  city: string;
+  recommendationsByCategory: Record<string, RecommendedPlace[]>;
+  allRecommendations: RecommendedPlace[];
 };
 
 

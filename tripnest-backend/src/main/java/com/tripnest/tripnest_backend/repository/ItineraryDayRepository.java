@@ -19,4 +19,6 @@ public interface ItineraryDayRepository extends JpaRepository<ItineraryDay, Inte
     Optional<ItineraryDay> findByTripIdAndDayNumberAndTripUserEmail(Integer tripId, Integer dayNumber, String email);
 
     boolean existsByTripIdAndDayNumber(Integer tripId, Integer dayNumber);
+
+    Optional<ItineraryDay> findByTripIdAndDayNumber(Integer tripId, Integer dayNumber);
 }

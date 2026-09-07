@@ -10,6 +10,8 @@ import type {
   ItineraryDay,
   JoinRequestResponse,
   MembershipRole,
+  Notification,
+  NotificationUnreadCount,
   PlaceInfo,
   RemainingBudget,
   Trip,
@@ -20,6 +22,12 @@ import type {
   UpdateItineraryDayRequest,
   UpdateTripRequest,
   WeatherInfo,
+  SmartItineraryRequest,
+  SmartItineraryResponse,
+  ItinerarySuggestionResponse,
+  ApplyItinerarySuggestionsRequest,
+  DestinationRecommendationResponse,
+  RecommendedPlace,
 } from "./types";
 
 export const API_BASE_URL =
@@ -57,9 +65,11 @@ export async function apiFetch<T>(path: string, options: RequestInit = {}): Prom
     const message =
       typeof payload === "object" && payload && "message" in payload
         ? String(payload.message)
-        : typeof payload === "string" && payload
-          ? payload
-          : `Request failed with status ${response.status}`;
+        : typeof payload === "object" && payload && "error" in payload
+          ? String(payload.error)
+          : typeof payload === "string" && payload
+            ? payload
+            : `Request failed with status ${response.status}`;
 
     const error = new Error(message) as ApiError;
     error.status = response.status;
@@ -310,6 +320,87 @@ export async function rejectJoinRequest(
 ): Promise<JoinRequestResponse> {
   return apiFetch<JoinRequestResponse>(`/trips/${tripId}/join-requests/${requestId}/reject`, {
     method: "PATCH",
+  });
+}
+
+/* --- Notification Helper APIs --- */
+
+export async function getNotifications(): Promise<Notification[]> {
+  return apiFetch<Notification[]>("/notifications");
+}
+
+export async function getUnreadNotificationCount(): Promise<NotificationUnreadCount> {
+  return apiFetch<NotificationUnreadCount>("/notifications/unread-count");
+}
+
+export async function markNotificationAsRead(id: number | string): Promise<Notification> {
+  return apiFetch<Notification>(`/notifications/${id}/read`, {
+    method: "PATCH",
+  });
+}
+
+export async function markAllNotificationsAsRead(): Promise<void> {
+  return apiFetch<void>("/notifications/mark-all-read", {
+    method: "PATCH",
+  });
+}
+
+export async function deleteNotification(id: number | string): Promise<void> {
+  return apiFetch<void>(`/notifications/${id}`, {
+    method: "DELETE",
+  });
+}
+
+export async function changePassword(currentPassword: string, newPassword: string): Promise<{ message: string }> {
+  return apiFetch<{ message: string }>("/auth/change-password", {
+    method: "PUT",
+    body: JSON.stringify({ currentPassword, newPassword }),
+  });
+}
+
+export async function generateSmartItinerary(
+  tripId: number | string,
+  request?: SmartItineraryRequest
+): Promise<SmartItineraryResponse> {
+  return apiFetch<SmartItineraryResponse>(`/trips/${tripId}/smart-itinerary/generate`, {
+    method: "POST",
+    body: JSON.stringify(request || {}),
+  });
+}
+
+export async function applySmartItinerary(
+  tripId: number | string,
+  suggestions: SmartItineraryResponse
+): Promise<ItineraryDay[]> {
+  return apiFetch<ItineraryDay[]>(`/trips/${tripId}/smart-itinerary/apply`, {
+    method: "POST",
+    body: JSON.stringify(suggestions),
+  });
+}
+
+export async function getDestinationRecommendations(
+  tripId: number | string
+): Promise<DestinationRecommendationResponse> {
+  return apiFetch<DestinationRecommendationResponse>(`/trips/${tripId}/recommendations`);
+}
+
+export async function getItinerarySuggestions(
+  tripId: number | string,
+  request?: SmartItineraryRequest
+): Promise<ItinerarySuggestionResponse> {
+  return apiFetch<ItinerarySuggestionResponse>(`/trips/${tripId}/itinerary/suggestions`, {
+    method: "POST",
+    body: JSON.stringify(request || {}),
+  });
+}
+
+export async function applyItinerarySuggestions(
+  tripId: number | string,
+  request: ApplyItinerarySuggestionsRequest
+): Promise<ItineraryDay[]> {
+  return apiFetch<ItineraryDay[]>(`/trips/${tripId}/itinerary/apply-suggestions`, {
+    method: "POST",
+    body: JSON.stringify(request),
   });
 }
 
