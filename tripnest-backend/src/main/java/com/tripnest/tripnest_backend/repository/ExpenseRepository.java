@@ -30,4 +30,14 @@ public interface ExpenseRepository extends JpaRepository<Expense, Integer> {
     @Query("SELECT new com.tripnest.tripnest_backend.dto.ExpenseCategorySummary(e.category, SUM(e.amount)) " +
            "FROM Expense e WHERE e.trip.id = :tripId GROUP BY e.category")
     List<ExpenseCategorySummary> findCategorySummariesByTripId(@Param("tripId") Integer tripId);
+
+    @Query("SELECT SUM(e.amount) FROM Expense e WHERE e.trip.user.id = :userId")
+    BigDecimal findTotalExpensesByUserId(@Param("userId") Integer userId);
+
+    @Query("SELECT new com.tripnest.tripnest_backend.dto.ExpenseCategorySummary(e.category, SUM(e.amount)) " +
+           "FROM Expense e WHERE e.trip.user.id = :userId GROUP BY e.category")
+    List<ExpenseCategorySummary> findCategorySummariesByUserId(@Param("userId") Integer userId);
+
+    @Query("SELECT SUM(e.amount) FROM Expense e")
+    BigDecimal findTotalPlatformExpenses();
 }
