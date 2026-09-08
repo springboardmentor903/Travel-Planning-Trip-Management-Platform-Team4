@@ -140,3 +140,49 @@ export type RemainingBudget = {
   remainingBudget: number;
 };
 
+
+
+export type DestinationVisit = {
+  destinationId: number;
+  destinationName: string;
+  country: string;
+  visitCount: number;
+};
+
+export type BudgetOverview = { totalBudget: number; totalSpent: number };
+
+export type TravelStats = {
+  totalTripsTaken: number;
+  totalDestinationsVisited: number;
+  totalCountriesVisited: number;
+  totalAmountSpent: number;
+};
+
+export type TravelerDashboard = {
+  upcomingTrips: Trip[];
+  budgetOverview: BudgetOverview;
+  expenseSummary: CategorySummary[];
+  favoriteDestinations: DestinationVisit[];
+  travelStats: TravelStats;
+};
+
+export type TripAnalytics = { totalTrips: number; activeTrips: number; completedTrips: number };
+export type PlatformStats = { totalExpenses: number; totalNotificationsSent: number };
+export type AdminDashboard = {
+  totalRegisteredUsers: number;
+  tripAnalytics: TripAnalytics;
+  popularDestinations: DestinationVisit[];
+  platformStats: PlatformStats;
+};
+
+
+export type ReminderNotification = {
+  id: string;
+  type: "TRIP" | "ACTIVITY" | "BUDGET_80" | "BUDGET_100";
+  title: string;
+  message: string;
+  tripId?: number;
+  tripTitle?: string;
+  scheduledFor?: string;
+  severity: "info" | "warning" | "critical";
+};

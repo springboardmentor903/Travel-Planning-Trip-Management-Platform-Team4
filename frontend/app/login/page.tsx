@@ -60,10 +60,11 @@ export default function LoginPage() {
           id: data.id,
           name: data.name,
           email: data.email,
+          role: data.role,
         })
       );
 
-      router.push("/dashboard");
+      router.push(data.role === "ADMINISTRATOR" ? "/admin/dashboard" : "/dashboard");
     } catch (err: unknown) {
       if (err instanceof Error) {
         setError(err.message);

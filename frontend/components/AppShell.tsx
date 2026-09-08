@@ -13,6 +13,7 @@ type User = {
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: "⌂" },
   { href: "/trips", label: "Trip History", icon: "✈" },
+  { href: "/reminders", label: "Reminders & Alerts", icon: "🔔" },
   { href: "/profile", label: "Profile", icon: "◯" },
   { href: "/settings", label: "Account Settings", icon: "⚙" },
 ];
@@ -76,6 +77,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       ? "Dashboard"
       : pathname === "/trips"
         ? "Trip History"
+        : pathname === "/reminders"
+        ? "Reminders & Alerts"
         : pathname === "/profile"
           ? "Profile"
           : "Account Settings";
