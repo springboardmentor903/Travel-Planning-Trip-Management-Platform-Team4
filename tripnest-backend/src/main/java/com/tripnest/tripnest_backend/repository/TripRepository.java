@@ -1,9 +1,11 @@
 package com.tripnest.tripnest_backend.repository;
 
 import com.tripnest.tripnest_backend.entity.Trip;
+import com.tripnest.tripnest_backend.entity.TripStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
@@ -12,11 +14,29 @@ public interface TripRepository extends JpaRepository<Trip, Integer> {
 
     List<Trip> findByUserId(Integer userId);
 
+    List<Trip> findByStartDate(LocalDate startDate);
+
     List<Trip> findByUserEmail(String email);
 
-    List<Trip> findByUserIdAndDestinationId(Integer userId, Integer destinationId);
+    List<Trip> findByUserIdAndDestinationId(
+            Integer userId,
+            Integer destinationId
+    );
 
-    Optional<Trip> findByIdAndUserId(Integer id, Integer userId);
+    Optional<Trip> findByIdAndUserId(
+            Integer id,
+            Integer userId
+    );
 
-    Optional<Trip> findByIdAndUserEmail(Integer id, String email);
+    Optional<Trip> findByIdAndUserEmail(
+            Integer id,
+            String email
+    );
+
+    List<Trip> findByUserEmailAndStartDateAfterOrderByStartDateAsc(
+            String email,
+            LocalDate date
+    );
+
+    long countByStatus(TripStatus status);
 }

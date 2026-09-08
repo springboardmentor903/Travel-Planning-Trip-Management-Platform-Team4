@@ -16,6 +16,8 @@ import type {
   UpdateItineraryDayRequest,
   UpdateTripRequest,
   WeatherInfo,
+  TravelerDashboard,
+  AdminDashboard,
 } from "./types";
 
 export const API_BASE_URL =
@@ -233,3 +235,19 @@ export async function getRemainingBudget(
   return apiFetch<RemainingBudget>(`/trips/${tripId}/expenses/remaining-budget`);
 }
 
+
+
+/* --- Dashboard APIs --- */
+export async function getTravelerDashboard(): Promise<TravelerDashboard> {
+  return apiFetch<TravelerDashboard>("/dashboard/traveler");
+}
+
+export async function getAdminDashboard(): Promise<AdminDashboard> {
+  return apiFetch<AdminDashboard>("/admin/dashboard");
+}
+
+
+/* --- Reminder helpers used by the Notifications & Alerts UI --- */
+export async function getTomorrowTripReminders(): Promise<Trip[]> {
+  return getTrips();
+}

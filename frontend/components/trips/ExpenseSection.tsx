@@ -188,6 +188,13 @@ export default function ExpenseSection({ trip, onTripUpdated }: ExpenseSectionPr
   const remaining = remainingBudget ? remainingBudget.remainingBudget : totalBudget;
   const spentPercent = totalBudget > 0 ? Math.min(Math.round((totalSpent / totalBudget) * 100), 100) : 0;
   const isOverBudget = remaining < 0;
+  const budgetAlert = totalBudget > 0
+    ? totalSpent >= totalBudget
+      ? { level: "critical", text: `Budget alert: You have reached or exceeded 100% of this trip's budget.` }
+      : (totalSpent / totalBudget) * 100 >= 80
+        ? { level: "warning", text: `Budget warning: You have reached ${Math.round((totalSpent / totalBudget) * 100)}% of this trip's budget.` }
+        : null
+    : null;
 
   return (
     <section className="space-y-6">
@@ -227,6 +234,22 @@ export default function ExpenseSection({ trip, onTripUpdated }: ExpenseSectionPr
       {success && (
         <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm font-semibold text-emerald-700">
           {success}
+        </div>
+      )}
+
+      {budgetAlert && (
+        <div className={`rounded-2xl border p-4 text-sm font-bold shadow-sm ${
+          budgetAlert.level === "critical"
+            ? "border-red-200 bg-red-50 text-red-800"
+            : "border-amber-200 bg-amber-50 text-amber-800"
+        }`}>
+          <div className="flex items-center gap-3">
+            <span className="text-xl">{budgetAlert.level === "critical" ? "🚨" : "⚠️"}</span>
+            <div>
+              <p>{budgetAlert.level === "critical" ? "100% Budget Alert" : "80% Budget Alert"}</p>
+              <p className="mt-0.5 text-xs font-medium opacity-90">{budgetAlert.text}</p>
+            </div>
+          </div>
         </div>
       )}
 
