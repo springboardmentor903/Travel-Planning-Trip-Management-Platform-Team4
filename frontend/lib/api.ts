@@ -1,5 +1,6 @@
 import type {
   Activity,
+  AuthResponse,
   CategorySummary,
   CreateActivityRequest,
   CreateExpenseRequest,
@@ -8,7 +9,10 @@ import type {
   Destination,
   Expense,
   ItineraryDay,
+  LoginRequest,
+  Notification,
   PlaceInfo,
+  RegisterRequest,
   RemainingBudget,
   Trip,
   UpdateActivityRequest,
@@ -16,8 +20,6 @@ import type {
   UpdateItineraryDayRequest,
   UpdateTripRequest,
   WeatherInfo,
-  TravelerDashboard,
-  AdminDashboard,
 } from "./types";
 
 export const API_BASE_URL =
@@ -49,15 +51,21 @@ export async function apiFetch<T>(path: string, options: RequestInit = {}): Prom
     if (response.status === 401 && typeof window !== "undefined") {
       localStorage.removeItem("token");
       localStorage.removeItem("user");
-      window.location.href = "/login";
+      if (window.location.pathname !== "/login" && window.location.pathname !== "/register") {
+        window.location.href = "/login";
+      }
     }
 
-    const message =
-      typeof payload === "object" && payload && "message" in payload
-        ? String(payload.message)
-        : typeof payload === "string" && payload
-          ? payload
-          : `Request failed with status ${response.status}`;
+    let message = `Request failed with status ${response.status}`;
+    if (typeof payload === "object" && payload) {
+      if ("message" in payload && payload.message) {
+        message = String(payload.message);
+      } else if ("error" in payload && payload.error) {
+        message = String(payload.error);
+      }
+    } else if (typeof payload === "string" && payload.trim()) {
+      message = payload.trim();
+    }
 
     const error = new Error(message) as ApiError;
     error.status = response.status;
@@ -65,6 +73,22 @@ export async function apiFetch<T>(path: string, options: RequestInit = {}): Prom
   }
 
   return payload as T;
+}
+
+/* --- Authentication APIs --- */
+
+export async function login(credentials: LoginRequest): Promise<AuthResponse> {
+  return apiFetch<AuthResponse>("/auth/login", {
+    method: "POST",
+    body: JSON.stringify(credentials),
+  });
+}
+
+export async function register(data: RegisterRequest): Promise<AuthResponse> {
+  return apiFetch<AuthResponse>("/auth/register", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
 }
 
 /* --- Trip Helper APIs --- */
@@ -101,6 +125,10 @@ export async function deleteTrip(id: number | string): Promise<void> {
 
 export async function getDestinations(): Promise<Destination[]> {
   return apiFetch<Destination[]>("/destinations");
+}
+
+export async function getPopularDestinations(): Promise<Destination[]> {
+  return apiFetch<Destination[]>("/destinations/popular");
 }
 
 export async function getDestination(id: number | string): Promise<Destination> {
@@ -235,19 +263,8 @@ export async function getRemainingBudget(
   return apiFetch<RemainingBudget>(`/trips/${tripId}/expenses/remaining-budget`);
 }
 
+/* --- Notification Helper APIs --- */
 
-
-/* --- Dashboard APIs --- */
-export async function getTravelerDashboard(): Promise<TravelerDashboard> {
-  return apiFetch<TravelerDashboard>("/dashboard/traveler");
-}
-
-export async function getAdminDashboard(): Promise<AdminDashboard> {
-  return apiFetch<AdminDashboard>("/admin/dashboard");
-}
-
-
-/* --- Reminder helpers used by the Notifications & Alerts UI --- */
-export async function getTomorrowTripReminders(): Promise<Trip[]> {
-  return getTrips();
+export async function getNotifications(): Promise<Notification[]> {
+  return apiFetch<Notification[]>("/notifications");
 }

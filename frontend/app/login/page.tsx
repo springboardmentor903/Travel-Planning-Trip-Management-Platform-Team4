@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { API_BASE_URL } from "../../lib/api";
+import { login } from "../../lib/api";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -12,13 +12,23 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // If already authenticated, redirect directly to dashboard
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const token = localStorage.getItem("token");
+      if (token) {
+        router.replace("/dashboard");
+      }
+    }
+  }, [router]);
+
   const validateForm = (): boolean => {
     if (!email.trim()) {
       setError("Email address is required.");
       return false;
     }
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
+    if (!emailRegex.test(email.trim())) {
       setError("Please enter a valid email address.");
       return false;
     }
@@ -31,25 +41,13 @@ export default function LoginPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!validateForm()) return;
+    if (!validateForm() || loading) return;
 
     setLoading(true);
     setError(null);
 
     try {
-      const response = await fetch(`${API_BASE_URL}/auth/login`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ email: email.trim(), password }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || "Login failed. Please check your credentials.");
-      }
+      const data = await login({ email: email.trim(), password });
 
       if (data.token) {
         localStorage.setItem("token", data.token);
@@ -60,16 +58,15 @@ export default function LoginPage() {
           id: data.id,
           name: data.name,
           email: data.email,
-          role: data.role,
         })
       );
 
-      router.push(data.role === "ADMINISTRATOR" ? "/admin/dashboard" : "/dashboard");
+      router.replace("/dashboard");
     } catch (err: unknown) {
       if (err instanceof Error) {
         setError(err.message);
       } else {
-        setError("An unexpected error occurred. Please try again.");
+        setError("Invalid email or password. Please try again.");
       }
     } finally {
       setLoading(false);
@@ -106,7 +103,10 @@ export default function LoginPage() {
               type="email"
               required
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              onChange={(e) => {
+                setEmail(e.target.value);
+                if (error) setError(null);
+              }}
               placeholder="you@example.com"
               className="w-full px-4 py-3 rounded-xl bg-slate-950/40 border border-white/15 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200"
             />
@@ -121,7 +121,10 @@ export default function LoginPage() {
               type="password"
               required
               value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              onChange={(e) => {
+                setPassword(e.target.value);
+                if (error) setError(null);
+              }}
               placeholder="••••••••"
               className="w-full px-4 py-3 rounded-xl bg-slate-950/40 border border-white/15 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200"
             />

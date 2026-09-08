@@ -9,6 +9,7 @@ import {
   LinearScale,
   Title,
   Tooltip,
+  type TooltipItem,
 } from "chart.js";
 import { Doughnut } from "react-chartjs-2";
 import type { CategorySummary, ExpenseCategory } from "../../lib/types";
@@ -94,7 +95,7 @@ export default function CategoryChart({ summaries }: CategoryChartProps) {
       },
       tooltip: {
         callbacks: {
-          label: (context: any) => {
+          label: (context: TooltipItem<"doughnut">) => {
             const val = context.parsed || 0;
             const formatted = new Intl.NumberFormat("en-IN", {
               style: "currency",

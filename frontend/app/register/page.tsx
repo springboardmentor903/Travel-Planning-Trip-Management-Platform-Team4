@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { API_BASE_URL } from "../../lib/api";
+import { register } from "../../lib/api";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -14,6 +14,16 @@ export default function RegisterPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
+
+  // If already authenticated, redirect directly to dashboard
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const token = localStorage.getItem("token");
+      if (token) {
+        router.replace("/dashboard");
+      }
+    }
+  }, [router]);
 
   const validateForm = (): boolean => {
     if (!name.trim()) {
@@ -46,28 +56,22 @@ export default function RegisterPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!validateForm()) return;
+    if (!validateForm() || loading) return;
 
     setLoading(true);
     setError(null);
     setSuccessMsg(null);
 
     try {
-      const response = await fetch(`${API_BASE_URL}/auth/register`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ name: name.trim(), email: email.trim(), password }),
+      const data = await register({
+        name: name.trim(),
+        email: email.trim(),
+        password,
       });
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || "Registration failed. Please try again.");
-      }
-
-      setSuccessMsg("Account registered successfully! Redirecting to login...");
+      setSuccessMsg(
+        data.message || "Account registered successfully! Redirecting to login..."
+      );
 
       setTimeout(() => {
         router.push("/login");
@@ -76,7 +80,7 @@ export default function RegisterPage() {
       if (err instanceof Error) {
         setError(err.message);
       } else {
-        setError("An unexpected error occurred. Please try again.");
+        setError("Registration failed. Please try again.");
       }
     } finally {
       setLoading(false);
@@ -120,7 +124,10 @@ export default function RegisterPage() {
               type="text"
               required
               value={name}
-              onChange={(e) => setName(e.target.value)}
+              onChange={(e) => {
+                setName(e.target.value);
+                if (error) setError(null);
+              }}
               placeholder="Jane Doe"
               className="w-full px-4 py-2.5 rounded-xl bg-slate-950/40 border border-white/15 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200"
             />
@@ -135,7 +142,10 @@ export default function RegisterPage() {
               type="email"
               required
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              onChange={(e) => {
+                setEmail(e.target.value);
+                if (error) setError(null);
+              }}
               placeholder="you@example.com"
               className="w-full px-4 py-2.5 rounded-xl bg-slate-950/40 border border-white/15 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200"
             />
@@ -151,7 +161,10 @@ export default function RegisterPage() {
               required
               minLength={6}
               value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              onChange={(e) => {
+                setPassword(e.target.value);
+                if (error) setError(null);
+              }}
               placeholder="Minimum 6 characters"
               className="w-full px-4 py-2.5 rounded-xl bg-slate-950/40 border border-white/15 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200"
             />
@@ -166,7 +179,10 @@ export default function RegisterPage() {
               type="password"
               required
               value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
+              onChange={(e) => {
+                setConfirmPassword(e.target.value);
+                if (error) setError(null);
+              }}
               placeholder="Re-enter your password"
               className="w-full px-4 py-2.5 rounded-xl bg-slate-950/40 border border-white/15 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200"
             />

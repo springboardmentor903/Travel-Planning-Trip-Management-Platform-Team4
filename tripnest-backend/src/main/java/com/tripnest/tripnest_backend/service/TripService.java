@@ -198,7 +198,8 @@ public class TripService {
                 trip.getEndDate(),
                 trip.getBudget(),
                 trip.getNotes(),
-                trip.getCreatedAt()
+                trip.getCreatedAt(),
+                trip.getStatus()
         );
     }
 }

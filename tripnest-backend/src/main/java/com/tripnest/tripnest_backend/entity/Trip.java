@@ -49,6 +49,10 @@ public class Trip {
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
 
+    public Trip(Integer id, String title, User user, Destination destination, LocalDate startDate, LocalDate endDate, Double budget, String notes, LocalDateTime createdAt) {
+        this(id, title, user, destination, startDate, endDate, budget, notes, TripStatus.PLANNED, createdAt);
+    }
+
     @PrePersist
     protected void onCreate() {
         this.createdAt = LocalDateTime.now();
