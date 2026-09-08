@@ -4,7 +4,8 @@ import AppShell from "../../components/AppShell";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { deleteTrip, getTrips } from "../../lib/api";
-import type { Trip } from "../../lib/types";
+import type { Trip, TripStatus } from "../../lib/types";
+import TripStatusBadge from "../../components/trips/TripStatusBadge";
 
 export default function TripsPage() {
   const [trips, setTrips] = useState<Trip[]>([]);
@@ -19,7 +20,7 @@ export default function TripsPage() {
     setError("");
     try {
       const data = await getTrips();
-      setTrips(data);
+      setTrips(data || []);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unable to load trips from backend.");
     } finally {
@@ -50,23 +51,31 @@ export default function TripsPage() {
     }
   };
 
-  const completedCount = useMemo(() => {
+  const resolveStatus = (trip: Trip): TripStatus => {
+    if (trip.status === "ACTIVE" || trip.status === "PLANNED" || trip.status === "COMPLETED") {
+      return trip.status;
+    }
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    return trips.filter((trip) => new Date(trip.endDate) < today).length;
+    const start = new Date(`${trip.startDate}T00:00:00`);
+    const end = new Date(`${trip.endDate}T00:00:00`);
+    if (end < today) return "COMPLETED";
+    if (start <= today && end >= today) return "ACTIVE";
+    return "PLANNED";
+  };
+
+  const plannedCount = useMemo(() => {
+    return trips.filter((t) => resolveStatus(t) === "PLANNED").length;
   }, [trips]);
 
   const activeCount = useMemo(() => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    return trips.filter((trip) => {
-      const start = new Date(trip.startDate);
-      const end = new Date(trip.endDate);
-      return start <= today && end >= today;
-    }).length;
+    return trips.filter((t) => resolveStatus(t) === "ACTIVE").length;
   }, [trips]);
 
-  const upcomingCount = trips.length - completedCount - activeCount;
+  const completedCount = useMemo(() => {
+    return trips.filter((t) => resolveStatus(t) === "COMPLETED").length;
+  }, [trips]);
+
   const totalBudget = trips.reduce((sum, trip) => sum + Number(trip.budget || 0), 0);
 
   return (
@@ -81,9 +90,10 @@ export default function TripsPage() {
         <div className="flex items-center gap-3">
           <button
             onClick={loadTrips}
-            className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-700 shadow-sm transition hover:bg-slate-50"
+            disabled={loading}
+            className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-700 shadow-sm transition hover:bg-slate-50 disabled:opacity-50"
           >
-            Refresh
+            {loading ? "Refreshing…" : "🔄 Refresh"}
           </button>
           <Link
             href="/trips/new"
@@ -122,8 +132,8 @@ export default function TripsPage() {
       {/* Stats Summary Cards */}
       <div className="grid gap-5 md:grid-cols-4">
         <Stat title="Total Trips" value={loading ? "…" : String(trips.length)} icon="🧳" />
+        <Stat title="Planned" value={loading ? "…" : String(plannedCount)} icon="📅" />
         <Stat title="Active Now" value={loading ? "…" : String(activeCount)} icon="✈️" />
-        <Stat title="Upcoming" value={loading ? "…" : String(upcomingCount)} icon="📅" />
         <Stat title="Completed" value={loading ? "…" : String(completedCount)} icon="✓" />
       </div>
 
@@ -186,8 +196,6 @@ export default function TripsPage() {
 }
 
 function TripCard({ trip, onDeleteClick }: { trip: Trip; onDeleteClick: () => void }) {
-  const status = getTripStatus(trip.startDate, trip.endDate);
-
   return (
     <article className="group flex flex-col justify-between rounded-2xl border border-slate-200 bg-white p-5 transition hover:-translate-y-0.5 hover:border-indigo-200 hover:shadow-md">
       <div>
@@ -204,17 +212,14 @@ function TripCard({ trip, onDeleteClick }: { trip: Trip; onDeleteClick: () => vo
               🗺️
             </div>
           )}
-          <span
-            className={`absolute top-3 right-3 rounded-full px-3 py-1 text-xs font-extrabold shadow-sm ${
-              status === "Active"
-                ? "bg-emerald-500 text-white"
-                : status === "Upcoming"
-                ? "bg-indigo-600 text-white"
-                : "bg-slate-700 text-white"
-            }`}
-          >
-            {status}
-          </span>
+          <div className="absolute top-3 right-3">
+            <TripStatusBadge
+              status={trip.status}
+              startDate={trip.startDate}
+              endDate={trip.endDate}
+              variant="solid"
+            />
+          </div>
         </div>
 
         {/* Card Header Info */}
@@ -311,17 +316,6 @@ function EmptyState() {
       </Link>
     </div>
   );
-}
-
-function getTripStatus(startDateStr: string, endDateStr: string): "Upcoming" | "Active" | "Completed" {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const start = new Date(`${startDateStr}T00:00:00`);
-  const end = new Date(`${endDateStr}T00:00:00`);
-
-  if (end < today) return "Completed";
-  if (start <= today && end >= today) return "Active";
-  return "Upcoming";
 }
 
 function formatDate(value: string) {

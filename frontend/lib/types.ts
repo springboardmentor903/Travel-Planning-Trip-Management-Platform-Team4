@@ -4,6 +4,25 @@ export type User = {
   email: string;
 };
 
+export type LoginRequest = {
+  email: string;
+  password: string;
+};
+
+export type RegisterRequest = {
+  name: string;
+  email: string;
+  password: string;
+};
+
+export type AuthResponse = {
+  id: number;
+  name: string;
+  email: string;
+  message: string;
+  token: string | null;
+};
+
 export type Destination = {
   id: number;
   name: string;
@@ -12,20 +31,25 @@ export type Destination = {
   description: string | null;
   imageUrl: string | null;
   category?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
   location?: string | null;
   createdAt?: string | null;
 };
 
+export type TripStatus = "PLANNED" | "ACTIVE" | "COMPLETED";
+
 export type Trip = {
   id: number;
   title: string;
-  userId: number;
+  userId?: number;
   userEmail?: string;
   destination: Destination;
   startDate: string;
   endDate: string;
   budget?: number | null;
   notes?: string | null;
+  status: TripStatus;
   createdAt?: string | null;
 };
 
@@ -88,7 +112,7 @@ export type WeatherInfo = {
   locationName?: string;
 };
 
-export type PlaceInfo = {
+export type PlaceItemResponse = {
   id: string;
   name: string;
   category?: string;
@@ -97,6 +121,8 @@ export type PlaceInfo = {
   userRatingsTotal?: number;
   photoUrl?: string;
 };
+
+export type PlaceInfo = PlaceItemResponse;
 
 export type ExpenseCategory =
   | "TRANSPORTATION"
@@ -140,49 +166,10 @@ export type RemainingBudget = {
   remainingBudget: number;
 };
 
-
-
-export type DestinationVisit = {
-  destinationId: number;
-  destinationName: string;
-  country: string;
-  visitCount: number;
-};
-
-export type BudgetOverview = { totalBudget: number; totalSpent: number };
-
-export type TravelStats = {
-  totalTripsTaken: number;
-  totalDestinationsVisited: number;
-  totalCountriesVisited: number;
-  totalAmountSpent: number;
-};
-
-export type TravelerDashboard = {
-  upcomingTrips: Trip[];
-  budgetOverview: BudgetOverview;
-  expenseSummary: CategorySummary[];
-  favoriteDestinations: DestinationVisit[];
-  travelStats: TravelStats;
-};
-
-export type TripAnalytics = { totalTrips: number; activeTrips: number; completedTrips: number };
-export type PlatformStats = { totalExpenses: number; totalNotificationsSent: number };
-export type AdminDashboard = {
-  totalRegisteredUsers: number;
-  tripAnalytics: TripAnalytics;
-  popularDestinations: DestinationVisit[];
-  platformStats: PlatformStats;
-};
-
-
-export type ReminderNotification = {
-  id: string;
-  type: "TRIP" | "ACTIVITY" | "BUDGET_80" | "BUDGET_100";
-  title: string;
+export type Notification = {
+  id: number;
+  userId?: number;
   message: string;
-  tripId?: number;
-  tripTitle?: string;
-  scheduledFor?: string;
-  severity: "info" | "warning" | "critical";
+  eventKey?: string | null;
+  createdAt: string;
 };

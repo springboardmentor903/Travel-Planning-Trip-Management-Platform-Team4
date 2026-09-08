@@ -8,6 +8,7 @@ import { deleteTrip, getTrip } from "../../../lib/api";
 import type { Trip } from "../../../lib/types";
 import ItinerarySection from "../../../components/trips/ItinerarySection";
 import ExpenseSection from "../../../components/trips/ExpenseSection";
+import TripStatusBadge from "../../../components/trips/TripStatusBadge";
 
 export default function TripDetailPage() {
   const params = useParams<{ id: string }>();
@@ -142,7 +143,6 @@ function TripOverviewCard({
   onEdit: () => void;
   onDelete: () => void;
 }) {
-  const status = getTripStatus(trip.startDate, trip.endDate);
   const duration = calculateDurationDays(trip.startDate, trip.endDate);
 
   return (
@@ -164,17 +164,12 @@ function TripOverviewCard({
         
         <div className="absolute bottom-6 left-6 right-6 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
           <div>
-            <span
-              className={`inline-block rounded-full px-3 py-1 text-xs font-extrabold shadow-sm ${
-                status === "Active"
-                  ? "bg-emerald-500 text-white"
-                  : status === "Upcoming"
-                  ? "bg-indigo-600 text-white"
-                  : "bg-slate-700 text-white"
-              }`}
-            >
-              {status}
-            </span>
+            <TripStatusBadge
+              status={trip.status}
+              startDate={trip.startDate}
+              endDate={trip.endDate}
+              variant="solid"
+            />
             <h1 className="mt-2 text-3xl font-extrabold text-white sm:text-4xl">{trip.title}</h1>
             <p className="mt-1 text-lg font-bold text-indigo-200">
               📍 {trip.destination?.name}
@@ -243,17 +238,6 @@ function InfoCard({ label, value, icon }: { label: string; value: string; icon: 
       </div>
     </div>
   );
-}
-
-function getTripStatus(startDateStr: string, endDateStr: string): "Upcoming" | "Active" | "Completed" {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const start = new Date(`${startDateStr}T00:00:00`);
-  const end = new Date(`${endDateStr}T00:00:00`);
-
-  if (end < today) return "Completed";
-  if (start <= today && end >= today) return "Active";
-  return "Upcoming";
 }
 
 function calculateDurationDays(startDateStr: string, endDateStr: string): number {

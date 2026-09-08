@@ -1,18 +1,21 @@
 "use client";
 
+import { Suspense, useEffect, useState } from "react";
 import AppShell from "../../../components/AppShell";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { createTrip, getDestinations } from "../../../lib/api";
 import type { Destination } from "../../../lib/types";
-import { useRouter } from "next/navigation";
 
-export default function NewTripPage() {
+function NewTripForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const preselectedDestId = searchParams.get("destinationId") || "";
+
   const [destinations, setDestinations] = useState<Destination[]>([]);
   const [title, setTitle] = useState("");
   const [notes, setNotes] = useState("");
-  const [destinationId, setDestinationId] = useState("");
+  const [destinationId, setDestinationId] = useState(preselectedDestId);
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [budget, setBudget] = useState("");
@@ -24,10 +27,15 @@ export default function NewTripPage() {
 
   useEffect(() => {
     getDestinations()
-      .then(setDestinations)
+      .then((dests) => {
+        setDestinations(dests || []);
+        if (preselectedDestId && !destinationId) {
+          setDestinationId(preselectedDestId);
+        }
+      })
       .catch((err) => setError(err instanceof Error ? err.message : "Unable to load destinations."))
       .finally(() => setPageLoading(false));
-  }, []);
+  }, [preselectedDestId]);
 
   const validateForm = () => {
     const errors: { [key: string]: string } = {};
@@ -64,7 +72,7 @@ export default function NewTripPage() {
     event.preventDefault();
     setError("");
 
-    if (!validateForm()) {
+    if (!validateForm() || loading) {
       return;
     }
 
@@ -73,8 +81,8 @@ export default function NewTripPage() {
       const trip = await createTrip({
         title: title.trim(),
         destinationId: Number(destinationId),
-        startDate,
-        endDate,
+        startDate, // Format: YYYY-MM-DD from HTML5 date input
+        endDate,   // Format: YYYY-MM-DD from HTML5 date input
         budget: budget ? Number(budget) : null,
         notes: notes.trim() ? notes.trim() : null,
       });
@@ -92,7 +100,7 @@ export default function NewTripPage() {
   };
 
   return (
-    <AppShell>
+    <div>
       {/* Header */}
       <div className="mb-7">
         <Link href="/trips" className="inline-flex items-center text-sm font-bold text-indigo-600 hover:text-indigo-700">
@@ -245,6 +253,16 @@ export default function NewTripPage() {
           </Link>
         </div>
       </form>
+    </div>
+  );
+}
+
+export default function NewTripPage() {
+  return (
+    <AppShell>
+      <Suspense fallback={<div className="p-8 text-center text-sm font-semibold text-slate-500">Loading form…</div>}>
+        <NewTripForm />
+      </Suspense>
     </AppShell>
   );
 }

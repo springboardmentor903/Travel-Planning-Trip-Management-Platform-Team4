@@ -3,65 +3,287 @@
 import AppShell from "../../components/AppShell";
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { getTravelerDashboard } from "../../lib/api";
-import type { TravelerDashboard, User } from "../../lib/types";
+import { getDestinations, getTrips } from "../../lib/api";
+import type { Destination, Trip, TripStatus, User } from "../../lib/types";
+import TripStatusBadge from "../../components/trips/TripStatusBadge";
 
 export default function DashboardPage() {
   const [user, setUser] = useState<User | null>(null);
-  const [data, setData] = useState<TravelerDashboard | null>(null);
+  const [destinations, setDestinations] = useState<Destination[]>([]);
+  const [trips, setTrips] = useState<Trip[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  const load = async () => {
-    setLoading(true); setError("");
+  const loadDashboard = async () => {
+    setLoading(true);
+    setError("");
     try {
-      const stored = localStorage.getItem("user");
-      if (stored) setUser(JSON.parse(stored));
-      setData(await getTravelerDashboard());
-    } catch (e) { setError(e instanceof Error ? e.message : "Unable to load dashboard."); }
-    finally { setLoading(false); }
-  };
-  useEffect(() => { load(); }, []);
-  const money = (n: number) => `₹${Number(n || 0).toLocaleString("en-IN", { maximumFractionDigits: 2 })}`;
+      if (typeof window !== "undefined") {
+        const stored = localStorage.getItem("user");
+        if (stored) {
+          try {
+            setUser(JSON.parse(stored));
+          } catch {
+            setUser(null);
+          }
+        }
+      }
 
-  return <AppShell>
-    <section className="rounded-3xl bg-gradient-to-r from-indigo-700 via-indigo-600 to-violet-600 p-7 text-white shadow-xl sm:p-10">
-      <p className="text-sm font-semibold uppercase tracking-wider text-indigo-200">Traveler dashboard</p>
-      <h1 className="mt-2 text-3xl font-extrabold sm:text-4xl">{user?.name ? `Welcome back, ${user.name}` : "Welcome back"}</h1>
-      <p className="mt-3 text-indigo-100">Your trips, budgets, expenses and travel insights in one place.</p>
-      <div className="mt-6 flex gap-3"><Link href="/trips/new" className="rounded-xl bg-white px-5 py-3 text-sm font-bold text-indigo-700">+ Plan a trip</Link><button onClick={load} className="rounded-xl border border-white/30 px-5 py-3 text-sm font-bold">Refresh</button></div>
-    </section>
-    {error && <div className="mt-6 rounded-xl bg-red-50 p-4 text-red-700">{error}</div>}
-    {loading || !data ? <Loading /> : <>
-      <section className="mt-8 grid gap-5 md:grid-cols-2 xl:grid-cols-4">
-        <Card icon="🧳" title="Trips taken" value={String(data.travelStats.totalTripsTaken)} />
-        <Card icon="🌍" title="Destinations visited" value={String(data.travelStats.totalDestinationsVisited)} />
-        <Card icon="🗺️" title="Countries visited" value={String(data.travelStats.totalCountriesVisited)} />
-        <Card icon="💸" title="Total spent" value={money(data.travelStats.totalAmountSpent)} />
+      const [destinationData, tripData] = await Promise.all([
+        getDestinations(),
+        getTrips(),
+      ]);
+      setDestinations(destinationData || []);
+      setTrips(tripData || []);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unable to load dashboard data.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadDashboard();
+  }, []);
+
+  const resolveStatus = (trip: Trip): TripStatus => {
+    if (trip.status === "ACTIVE" || trip.status === "PLANNED" || trip.status === "COMPLETED") {
+      return trip.status;
+    }
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const start = new Date(`${trip.startDate}T00:00:00`);
+    const end = new Date(`${trip.endDate}T00:00:00`);
+    if (end < today) return "COMPLETED";
+    if (start <= today && end >= today) return "ACTIVE";
+    return "PLANNED";
+  };
+
+  const totalTrips = trips.length;
+  const plannedTrips = trips.filter((t) => resolveStatus(t) === "PLANNED").length;
+  const activeTrips = trips.filter((t) => resolveStatus(t) === "ACTIVE").length;
+  const completedTrips = trips.filter((t) => resolveStatus(t) === "COMPLETED").length;
+
+  return (
+    <AppShell>
+      {/* Welcome Banner */}
+      <section className="rounded-3xl bg-gradient-to-r from-indigo-700 via-indigo-600 to-violet-600 p-7 text-white shadow-xl shadow-indigo-100 sm:p-10">
+        <p className="text-sm font-semibold uppercase tracking-wider text-indigo-200">Your travel workspace</p>
+        <h1 className="mt-2 text-3xl font-extrabold tracking-tight sm:text-4xl">
+          {user?.name ? `Welcome back, ${user.name}!` : "Welcome back!"}
+        </h1>
+        <p className="mt-3 max-w-2xl text-sm leading-6 text-indigo-100 sm:text-base">
+          Track and organize your itineraries, manage travel budgets, and explore curated world destinations.
+        </p>
+        <div className="mt-6 flex flex-wrap gap-3">
+          <Link
+            href="/trips/new"
+            className="rounded-xl bg-white px-5 py-3 text-sm font-bold text-indigo-700 shadow-sm hover:bg-indigo-50 transition"
+          >
+            + Plan a new trip
+          </Link>
+          <button
+            onClick={loadDashboard}
+            disabled={loading}
+            className="rounded-xl border border-white/30 bg-white/10 px-5 py-3 text-sm font-bold hover:bg-white/20 transition disabled:opacity-50"
+          >
+            {loading ? "Refreshing…" : "🔄 Refresh data"}
+          </button>
+        </div>
       </section>
-      <section className="mt-8 grid gap-6 lg:grid-cols-2">
-        <Panel title="Upcoming Trips" subtitle="Future trips ordered by nearest start date">
-          {data.upcomingTrips.length ? <div className="space-y-3">{data.upcomingTrips.map(t => <Link key={t.id} href={`/trips/${t.id}`} className="block rounded-xl border border-slate-200 p-4 hover:border-indigo-300"><b>{t.title}</b><p className="mt-1 text-sm text-slate-500">{t.destination.name} · {formatDate(t.startDate)} – {formatDate(t.endDate)}</p></Link>)}</div> : <Empty text="No upcoming trips." />}
-        </Panel>
-        <Panel title="Budget Overview" subtitle="Across all your trips">
-          <div className="grid grid-cols-2 gap-4"><Metric label="Total budget" value={money(data.budgetOverview.totalBudget)} /><Metric label="Actually spent" value={money(data.budgetOverview.totalSpent)} /></div>
-          <div className="mt-5 h-3 overflow-hidden rounded-full bg-slate-100"><div className="h-full rounded-full bg-indigo-600" style={{ width: `${Math.min(100, data.budgetOverview.totalBudget ? (data.budgetOverview.totalSpent / data.budgetOverview.totalBudget) * 100 : 0)}%` }} /></div>
-        </Panel>
+
+      {error && (
+        <div className="mt-6 rounded-xl border border-red-200 bg-red-50 p-4 text-sm font-semibold text-red-700">
+          {error}
+        </div>
+      )}
+
+      {/* Trip Status Counts */}
+      <section className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+        <SummaryCard
+          icon="🧳"
+          title="Total Trips"
+          value={loading ? "…" : String(totalTrips)}
+          subtext="All recorded journeys"
+        />
+        <SummaryCard
+          icon="📅"
+          title="Planned Trips"
+          value={loading ? "…" : String(plannedTrips)}
+          subtext="Upcoming departures"
+          badge="PLANNED"
+        />
+        <SummaryCard
+          icon="✈️"
+          title="Active Trips"
+          value={loading ? "…" : String(activeTrips)}
+          subtext="Currently traveling"
+          badge="ACTIVE"
+        />
+        <SummaryCard
+          icon="✓"
+          title="Completed Trips"
+          value={loading ? "…" : String(completedTrips)}
+          subtext="Past travel memories"
+          badge="COMPLETED"
+        />
       </section>
-      <section className="mt-8 grid gap-6 lg:grid-cols-2">
-        <Panel title="Expense Summary" subtitle="Category breakdown across all trips">
-          {data.expenseSummary.length ? <div className="space-y-4">{data.expenseSummary.map(x => { const max=Math.max(...data.expenseSummary.map(a=>Number(a.totalAmount))); return <div key={x.category}><div className="flex justify-between text-sm"><span className="font-semibold">{x.category.replaceAll("_", " ")}</span><span>{money(x.totalAmount)}</span></div><div className="mt-2 h-2 rounded-full bg-slate-100"><div className="h-full rounded-full bg-violet-500" style={{width:`${max ? Number(x.totalAmount)/max*100 : 0}%`}} /></div></div>; })}</div> : <Empty text="No expenses logged yet." />}
-        </Panel>
-        <Panel title="Favorite / Most-Visited Destinations" subtitle="Based on how many trips you created">
-          {data.favoriteDestinations.length ? <div className="space-y-3">{data.favoriteDestinations.slice(0,5).map((d,i)=><div key={d.destinationId} className="flex items-center justify-between rounded-xl border border-slate-200 p-3"><div><b>#{i+1} {d.destinationName}</b><p className="text-sm text-slate-500">{d.country}</p></div><span className="rounded-full bg-indigo-50 px-3 py-1 text-sm font-bold text-indigo-700">{d.visitCount} visits</span></div>)}</div> : <Empty text="Visit data will appear after creating trips." />}
-        </Panel>
+
+      {/* Main Grid: Destinations Catalog and Recent Trips */}
+      <section className="mt-8 grid gap-6 xl:grid-cols-[1.35fr_0.65fr]">
+        {/* Available Destinations */}
+        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+          <div className="mb-5 flex items-center justify-between">
+            <div>
+              <h2 className="text-xl font-extrabold text-slate-900">Available Destinations</h2>
+              <p className="mt-1 text-sm text-slate-500">Curated locations from the TripNest database.</p>
+            </div>
+            <Link
+              href="/destinations"
+              className="text-xs font-bold text-indigo-600 hover:text-indigo-700"
+            >
+              Browse All →
+            </Link>
+          </div>
+
+          {loading ? (
+            <Loading />
+          ) : destinations.length === 0 ? (
+            <EmptyState text="No destinations are available in the backend yet." />
+          ) : (
+            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+              {destinations.slice(0, 6).map((destination) => (
+                <Link
+                  key={destination.id}
+                  href={`/destinations/${destination.id}`}
+                  className="group rounded-2xl border border-slate-200 p-4 transition hover:-translate-y-0.5 hover:border-indigo-200 hover:shadow-md"
+                >
+                  <div className="mb-4 h-28 overflow-hidden rounded-xl bg-slate-100">
+                    {destination.imageUrl ? (
+                      <img
+                        src={destination.imageUrl}
+                        alt={destination.name}
+                        className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
+                      />
+                    ) : (
+                      <div className="flex h-full items-center justify-center text-3xl">🌍</div>
+                    )}
+                  </div>
+                  <h3 className="font-bold text-slate-900 line-clamp-1">{destination.name}</h3>
+                  <p className="mt-1 text-xs font-semibold text-slate-500">
+                    {destination.city || destination.country || "Location"}
+                  </p>
+                  <p className="mt-2 line-clamp-2 text-xs text-slate-600">
+                    {destination.description || "Explore this destination."}
+                  </p>
+                </Link>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Recent Trips */}
+        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+          <div className="mb-5 flex items-center justify-between">
+            <div>
+              <h2 className="text-xl font-extrabold text-slate-900">Recent Trips</h2>
+              <p className="mt-1 text-sm text-slate-500">Your latest planned itineraries.</p>
+            </div>
+            <Link href="/trips" className="text-xs font-bold text-indigo-600 hover:text-indigo-700">
+              View all →
+            </Link>
+          </div>
+
+          {loading ? (
+            <Loading />
+          ) : trips.length === 0 ? (
+            <EmptyState text="You have not created any trips yet. Click '+ Plan a new trip' to start." />
+          ) : (
+            <div className="space-y-3">
+              {trips.slice(0, 5).map((trip) => (
+                <Link
+                  key={trip.id}
+                  href={`/trips/${trip.id}`}
+                  className="block rounded-xl border border-slate-200 p-4 transition hover:border-indigo-200 hover:bg-indigo-50/20"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="font-bold text-slate-900 truncate">{trip.title}</p>
+                      <p className="mt-0.5 text-xs text-slate-500">
+                        📍 {trip.destination?.name || "Destination"}
+                      </p>
+                    </div>
+                    <TripStatusBadge
+                      status={trip.status}
+                      startDate={trip.startDate}
+                      endDate={trip.endDate}
+                    />
+                  </div>
+                  <p className="mt-3 text-xs text-slate-400">
+                    📅 {formatDate(trip.startDate)} – {formatDate(trip.endDate)}
+                  </p>
+                </Link>
+              ))}
+            </div>
+          )}
+        </div>
       </section>
-    </>}
-  </AppShell>;
+    </AppShell>
+  );
 }
-function Card({icon,title,value}:{icon:string;title:string;value:string}) { return <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"><div className="flex items-center justify-between"><span className="text-2xl">{icon}</span><b className="text-xl">{value}</b></div><p className="mt-4 text-sm font-semibold text-slate-500">{title}</p></div>; }
-function Panel({title,subtitle,children}:{title:string;subtitle:string;children:React.ReactNode}) { return <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"><h2 className="text-xl font-extrabold">{title}</h2><p className="mb-5 mt-1 text-sm text-slate-500">{subtitle}</p>{children}</div>; }
-function Metric({label,value}:{label:string;value:string}) { return <div className="rounded-xl bg-slate-50 p-4"><p className="text-xs font-semibold uppercase text-slate-500">{label}</p><b className="mt-2 block text-xl">{value}</b></div>; }
-function Empty({text}:{text:string}) { return <div className="rounded-xl border border-dashed border-slate-300 p-7 text-center text-sm text-slate-500">{text}</div>; }
-function Loading(){return <div className="mt-8 rounded-2xl bg-white p-10 text-center text-slate-500">Loading dashboard…</div>;}
-function formatDate(v:string){return new Date(`${v}T00:00:00`).toLocaleDateString(undefined,{day:"2-digit",month:"short",year:"numeric"});}
+
+function SummaryCard({
+  icon,
+  title,
+  value,
+  subtext,
+  badge,
+}: {
+  icon: string;
+  title: string;
+  value: string;
+  subtext: string;
+  badge?: TripStatus;
+}) {
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+      <div className="flex items-center justify-between">
+        <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-indigo-50 text-xl">
+          {icon}
+        </div>
+        <span className="text-2xl font-extrabold text-slate-900">{value}</span>
+      </div>
+      <div className="mt-4 flex items-center justify-between">
+        <p className="text-sm font-bold text-slate-700">{title}</p>
+        {badge && <TripStatusBadge status={badge} />}
+      </div>
+      <p className="mt-1 text-xs text-slate-400">{subtext}</p>
+    </div>
+  );
+}
+
+function Loading() {
+  return (
+    <div className="rounded-xl bg-slate-50 p-8 text-center text-sm font-semibold text-slate-500">
+      <div className="mx-auto mb-2 h-6 w-6 animate-spin rounded-full border-2 border-indigo-600 border-t-transparent" />
+      Loading from backend…
+    </div>
+  );
+}
+
+function EmptyState({ text }: { text: string }) {
+  return (
+    <div className="rounded-xl border border-dashed border-slate-300 p-8 text-center text-sm text-slate-500">
+      {text}
+    </div>
+  );
+}
+
+function formatDate(value: string) {
+  if (!value) return "";
+  return new Date(`${value}T00:00:00`).toLocaleDateString(undefined, {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
+}

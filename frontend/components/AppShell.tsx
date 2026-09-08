@@ -3,17 +3,13 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-
-type User = {
-  id?: number | string;
-  name?: string;
-  email?: string;
-};
+import type { User } from "../lib/types";
 
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: "⌂" },
   { href: "/trips", label: "Trip History", icon: "✈" },
-  { href: "/reminders", label: "Reminders & Alerts", icon: "🔔" },
+  { href: "/destinations", label: "Destinations", icon: "🌍" },
+  { href: "/notifications", label: "Notifications", icon: "🔔" },
   { href: "/profile", label: "Profile", icon: "◯" },
   { href: "/settings", label: "Account Settings", icon: "⚙" },
 ];
@@ -23,44 +19,33 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
   const [mobileOpen, setMobileOpen] = useState(false);
-
-/* testing purpose this code remove auth accss for frontend all files
-
-  useEffect(() => {
-    const storedUser = localStorage.getItem("user");
-
-    if (storedUser) {
-      try {
-        setUser(JSON.parse(storedUser));
-      } catch {
-        setUser(null);
-      }
-    }
-  }, []);
-
- */
+  const [checkingAuth, setCheckingAuth] = useState(true);
 
   useEffect(() => {
-    const token = localStorage.getItem("token");
-    if (!token) {
-      router.replace("/login");
-      return;
-    }
-
-    const storedUser = localStorage.getItem("user");
-    if (storedUser) {
-      try {
-        setUser(JSON.parse(storedUser));
-      } catch {
-        setUser(null);
+    if (typeof window !== "undefined") {
+      const token = localStorage.getItem("token");
+      if (!token) {
+        router.replace("/login");
+        return;
       }
-    }
-  }, []);
 
+      const storedUser = localStorage.getItem("user");
+      if (storedUser) {
+        try {
+          setUser(JSON.parse(storedUser));
+        } catch {
+          setUser(null);
+        }
+      }
+      setCheckingAuth(false);
+    }
+  }, [router]);
 
   const logout = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("token");
+      localStorage.removeItem("user");
+    }
     router.replace("/login");
   };
 
@@ -72,16 +57,32 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       .slice(0, 2)
       .toUpperCase() || "TN";
 
-  const pageTitle =
-    pathname === "/dashboard"
-      ? "Dashboard"
-      : pathname === "/trips"
-        ? "Trip History"
-        : pathname === "/reminders"
-        ? "Reminders & Alerts"
-        : pathname === "/profile"
-          ? "Profile"
-          : "Account Settings";
+  const getPageTitle = (path: string) => {
+    if (path === "/dashboard") return "Dashboard";
+    if (path.startsWith("/trips/new")) return "Plan a Trip";
+    if (path.includes("/edit")) return "Edit Trip";
+    if (path.startsWith("/trips/")) return "Trip Details";
+    if (path.startsWith("/trips")) return "Trip History";
+    if (path.startsWith("/destinations/")) return "Destination Details";
+    if (path.startsWith("/destinations")) return "Destinations Catalog";
+    if (path.startsWith("/notifications")) return "Notifications & Reminders";
+    if (path.startsWith("/profile")) return "Profile";
+    if (path.startsWith("/settings")) return "Account Settings";
+    return "TripNest";
+  };
+
+  const pageTitle = getPageTitle(pathname);
+
+  if (checkingAuth) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-slate-50">
+        <div className="text-center">
+          <div className="mx-auto h-10 w-10 animate-spin rounded-full border-4 border-indigo-600 border-t-transparent" />
+          <p className="mt-3 text-sm font-semibold text-slate-500">Checking authentication…</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900">
@@ -102,14 +103,16 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             Workspace
           </p>
           {navItems.map((item) => {
-            const active = pathname === item.href;
+            const active =
+              pathname === item.href ||
+              (item.href !== "/dashboard" && pathname.startsWith(item.href));
             return (
               <Link
                 key={item.href}
                 href={item.href}
                 className={`flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-semibold transition ${
                   active
-                    ? "bg-indigo-50 text-indigo-700"
+                    ? "bg-indigo-50 text-indigo-700 font-bold"
                     : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
                 }`}
               >
@@ -127,7 +130,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             </div>
             <div className="min-w-0">
               <p className="truncate text-sm font-bold">{user?.name || "Traveler"}</p>
-              <p className="truncate text-xs text-slate-500">{user?.email || "Welcome back"}</p>
+              <p className="truncate text-xs text-slate-500">{user?.email || "Authenticated"}</p>
             </div>
           </div>
           <button
@@ -150,31 +153,48 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           <aside className="relative flex h-full w-72 flex-col bg-white shadow-2xl">
             <div className="flex h-20 items-center justify-between border-b border-slate-200 px-5">
               <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-600 text-white">✈️</div>
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-600 text-white">
+                  ✈️
+                </div>
                 <p className="font-extrabold">TripNest</p>
               </div>
-              <button onClick={() => setMobileOpen(false)} className="text-xl text-slate-500">×</button>
+              <button onClick={() => setMobileOpen(false)} className="text-xl text-slate-500">
+                ✕
+              </button>
             </div>
             <nav className="space-y-1 p-4">
-              {navItems.map((item) => (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  onClick={() => setMobileOpen(false)}
-                  className={`flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-semibold ${
-                    pathname === item.href ? "bg-indigo-50 text-indigo-700" : "text-slate-600"
-                  }`}
-                >
-                  <span>{item.icon}</span>
-                  {item.label}
-                </Link>
-              ))}
+              {navItems.map((item) => {
+                const active =
+                  pathname === item.href ||
+                  (item.href !== "/dashboard" && pathname.startsWith(item.href));
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    onClick={() => setMobileOpen(false)}
+                    className={`flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-semibold ${
+                      active ? "bg-indigo-50 text-indigo-700 font-bold" : "text-slate-600"
+                    }`}
+                  >
+                    <span>{item.icon}</span>
+                    {item.label}
+                  </Link>
+                );
+              })}
             </nav>
+            <div className="mt-auto border-t border-slate-200 p-4">
+              <button
+                onClick={logout}
+                className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-600"
+              >
+                Sign out
+              </button>
+            </div>
           </aside>
         </div>
       )}
 
-      {/* Main area: margin is used instead of padding so the fixed sidebar can never overlap the content. */}
+      {/* Main area */}
       <div className="min-h-screen lg:ml-72">
         <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/95 backdrop-blur">
           <div className="mx-auto flex h-20 max-w-[1400px] items-center justify-between px-5 sm:px-8">
