@@ -49,10 +49,43 @@ export async function apiFetch<T>(path: string, options: RequestInit = {}): Prom
 
   if (!response.ok) {
     if (response.status === 401 && typeof window !== "undefined") {
-      localStorage.removeItem("token");
-      localStorage.removeItem("user");
-      if (window.location.pathname !== "/login" && window.location.pathname !== "/register") {
-        window.location.href = "/login";
+      // Only clear the session and redirect when the 401 is a genuine token
+      // authentication failure. Check that the response body signals an auth
+      // problem (missing/invalid token) rather than some other server-side 401
+      // (e.g. a misconfigured or missing endpoint that Spring Security rejects
+      // before even reaching a controller).
+      const isAuthFailure =
+        typeof payload === "object" && payload !== null
+          ? ("error" in payload &&
+              typeof payload.error === "string" &&
+              (payload.error.toLowerCase().includes("token") ||
+                payload.error.toLowerCase().includes("authentication") ||
+                payload.error.toLowerCase().includes("unauthorized") ||
+                payload.error.toLowerCase().includes("log in"))) ||
+            ("message" in payload &&
+              typeof payload.message === "string" &&
+              (payload.message.toLowerCase().includes("token") ||
+                payload.message.toLowerCase().includes("authentication") ||
+                payload.message.toLowerCase().includes("unauthorized") ||
+                payload.message.toLowerCase().includes("log in")))
+          : typeof payload === "string" &&
+            (payload.toLowerCase().includes("token") ||
+              payload.toLowerCase().includes("authentication") ||
+              payload.toLowerCase().includes("unauthorized") ||
+              payload.toLowerCase().includes("log in"));
+
+      // No payload at all (empty body 401) → also treat as auth failure
+      const emptyBody = payload === null || payload === "" || payload === undefined;
+
+      if (isAuthFailure || emptyBody) {
+        localStorage.removeItem("token");
+        localStorage.removeItem("user");
+        if (
+          window.location.pathname !== "/login" &&
+          window.location.pathname !== "/register"
+        ) {
+          window.location.href = "/login";
+        }
       }
     }
 
