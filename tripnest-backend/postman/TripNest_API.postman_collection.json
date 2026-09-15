@@ -920,6 +920,170 @@
 				}
 			],
 			"description": "Endpoints for activity management (Requires JWT Authentication)."
+		},
+		{
+			"name": "5. Admin Management",
+			"item": [
+				{
+					"name": "Admin Dashboard",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200 OK or 403 Forbidden\", function () {",
+									"    pm.expect(pm.response.code).to.be.oneOf([200, 403]);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/admin/dashboard",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"admin",
+								"dashboard"
+							]
+						},
+						"description": "Access admin dashboard (Requires ADMINISTRATOR role)."
+					},
+					"response": []
+				},
+				{
+					"name": "Get Admin Analytics",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200 OK or 403 Forbidden\", function () {",
+									"    pm.expect(pm.response.code).to.be.oneOf([200, 403]);",
+									"});",
+									"if (pm.response.code === 200) {",
+									"    pm.test(\"Response contains all 4 analytics components\", function () {",
+									"        var jsonData = pm.response.json();",
+									"        pm.expect(jsonData).to.have.property(\"totalUsers\");",
+									"        pm.expect(jsonData).to.have.property(\"tripAnalytics\");",
+									"        pm.expect(jsonData.tripAnalytics).to.have.property(\"totalTrips\");",
+									"        pm.expect(jsonData.tripAnalytics).to.have.property(\"activeTrips\");",
+									"        pm.expect(jsonData.tripAnalytics).to.have.property(\"completedTrips\");",
+									"        pm.expect(jsonData).to.have.property(\"popularDestinations\");",
+									"        pm.expect(Array.isArray(jsonData.popularDestinations)).to.be.true;",
+									"        pm.expect(jsonData).to.have.property(\"platformStats\");",
+									"        pm.expect(jsonData.platformStats).to.have.property(\"totalExpenses\");",
+									"        pm.expect(jsonData.platformStats).to.have.property(\"totalNotifications\");",
+									"    });",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/admin/analytics",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"admin",
+								"analytics"
+							]
+						},
+						"description": "Access admin analytics dashboard data (Requires ADMINISTRATOR role)."
+					},
+					"response": []
+				},
+				{
+					"name": "List All Users",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200 OK or 403 Forbidden\", function () {",
+									"    pm.expect(pm.response.code).to.be.oneOf([200, 403]);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/admin/users",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"admin",
+								"users"
+							]
+						},
+						"description": "Retrieves user summaries list (Requires ADMINISTRATOR role)."
+					},
+					"response": []
+				},
+				{
+					"name": "Update User Role",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200 OK or 403 Forbidden\", function () {",
+									"    pm.expect(pm.response.code).to.be.oneOf([200, 403]);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"roleName\": \"ADMINISTRATOR\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/admin/users/{{user_id}}/role",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"admin",
+								"users",
+								"{{user_id}}",
+								"role"
+							]
+						},
+						"description": "Updates role for specified user (Requires ADMINISTRATOR role)."
+					},
+					"response": []
+				}
+			],
+			"description": "Admin management endpoints (Requires ADMINISTRATOR role)."
 		}
 	]
 }

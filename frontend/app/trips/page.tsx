@@ -2,57 +2,56 @@
 
 import AppShell from "../../components/AppShell";
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
-import { deleteTrip, getDestinations, getTrips } from "../../lib/api";
-import type { Destination, Trip } from "../../lib/types";
-import TripSearchModal from "../../components/trips/TripSearchModal";
-import {
-  Calendar,
-  MapPin,
-  Plus,
-  RefreshCw,
-  Search,
-  Trash2,
-  Edit,
-  Clock,
-  Wallet,
-  Compass,
-  CheckCircle2,
-  Sparkles,
-} from "lucide-react";
+import { useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useMemo, useState } from "react";
+import { deleteTrip, getTrips } from "../../lib/api";
+import type { Trip, TripStatus } from "../../lib/types";
+import TripStatusBadge from "../../components/trips/TripStatusBadge";
 
 export default function TripsPage() {
+  return (
+    <AppShell>
+      <Suspense fallback={<TripsLoadingFallback />}>
+        <TripsContent />
+      </Suspense>
+    </AppShell>
+  );
+}
+
+function TripsContent() {
+  const searchParams = useSearchParams();
+  const statusParam = searchParams.get("status");
+
   const [trips, setTrips] = useState<Trip[]>([]);
-  const [destinations, setDestinations] = useState<Destination[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [notification, setNotification] = useState<{ type: "success" | "error"; message: string } | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Trip | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [searchModalOpen, setSearchModalOpen] = useState(false);
-
   const [searchQuery, setSearchQuery] = useState("");
-  const [activeTab, setActiveTab] = useState<"All" | "Active" | "Upcoming" | "Completed">("All");
+  const [selectedFilter, setSelectedFilter] = useState<"ALL" | TripStatus>("ALL");
 
-  const loadData = async () => {
+  useEffect(() => {
+    if (statusParam === "ACTIVE" || statusParam === "PLANNED" || statusParam === "COMPLETED") {
+      setSelectedFilter(statusParam);
+    }
+  }, [statusParam]);
+
+  const loadTrips = async () => {
     setLoading(true);
     setError("");
     try {
-      const [tripsData, destsData] = await Promise.all([
-        getTrips(),
-        getDestinations().catch(() => []),
-      ]);
-      setTrips(tripsData);
-      setDestinations(destsData);
+      const data = await getTrips();
+      setTrips(data || []);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Unable to load data from backend.");
+      setError(err instanceof Error ? err.message : "Unable to load trips. Please try again.");
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    loadData();
+    loadTrips();
   }, []);
 
   const handleDelete = async () => {
@@ -63,7 +62,7 @@ export default function TripsPage() {
       await deleteTrip(deleteTarget.id);
       setNotification({ type: "success", message: `Trip "${deleteTarget.title}" deleted successfully.` });
       setDeleteTarget(null);
-      await loadData();
+      await loadTrips();
     } catch (err) {
       setNotification({
         type: "error",
@@ -74,273 +73,544 @@ export default function TripsPage() {
     }
   };
 
-  const completedCount = useMemo(() => {
+  const resolveStatus = (trip: Trip): TripStatus => {
+    if (trip.status === "ACTIVE" || trip.status === "PLANNED" || trip.status === "COMPLETED") {
+      return trip.status;
+    }
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    return trips.filter((trip) => new Date(`${trip.endDate}T00:00:00`) < today).length;
+    const start = new Date(`${trip.startDate}T00:00:00`);
+    const end = new Date(`${trip.endDate}T00:00:00`);
+    if (end < today) return "COMPLETED";
+    if (start <= today && end >= today) return "ACTIVE";
+    return "PLANNED";
+  };
+
+  const plannedCount = useMemo(() => {
+    return trips.filter((t) => resolveStatus(t) === "PLANNED").length;
   }, [trips]);
 
   const activeCount = useMemo(() => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    return trips.filter((trip) => {
-      const start = new Date(`${trip.startDate}T00:00:00`);
-      const end = new Date(`${trip.endDate}T00:00:00`);
-      return start <= today && end >= today;
-    }).length;
+    return trips.filter((t) => resolveStatus(t) === "ACTIVE").length;
   }, [trips]);
 
-  const upcomingCount = trips.length - completedCount - activeCount;
+  const completedCount = useMemo(() => {
+    return trips.filter((t) => resolveStatus(t) === "COMPLETED").length;
+  }, [trips]);
 
   const filteredTrips = useMemo(() => {
     return trips.filter((trip) => {
+      const matchesStatus = selectedFilter === "ALL" || resolveStatus(trip) === selectedFilter;
+      const query = searchQuery.toLowerCase().trim();
       const matchesSearch =
-        searchQuery.trim() === "" ||
-        trip.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        trip.destination?.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        trip.destination?.country?.toLowerCase().includes(searchQuery.toLowerCase());
-
-      if (!matchesSearch) return false;
-
-      const status = getTripStatus(trip.startDate, trip.endDate);
-      if (activeTab === "All") return true;
-      return status === activeTab;
+        !query ||
+        trip.title.toLowerCase().includes(query) ||
+        (trip.destination?.name && trip.destination.name.toLowerCase().includes(query)) ||
+        (trip.destination?.country && trip.destination.country.toLowerCase().includes(query));
+      return matchesStatus && matchesSearch;
     });
-  }, [trips, searchQuery, activeTab]);
+  }, [trips, selectedFilter, searchQuery]);
+
+  const totalBudget = useMemo(() => {
+    return trips.reduce((sum, trip) => sum + Number(trip.budget || 0), 0);
+  }, [trips]);
 
   return (
-    <AppShell>
-      {/* HEADER & TOP ACTIONS */}
-      <div className="mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-[#111827]">My Trips</h1>
-          <p className="text-xs text-[#6B7280]">Manage your travel itineraries, expenses, and co-travelers.</p>
-        </div>
+    <>
+      {/* Hero Banner Header */}
+      <div className="relative mb-8 overflow-hidden rounded-3xl bg-gradient-to-r from-indigo-900 via-indigo-800 to-purple-900 p-6 sm:p-8 text-white shadow-xl shadow-indigo-950/10">
+        <div className="absolute right-0 top-0 -mt-10 -mr-10 h-64 w-64 rounded-full bg-indigo-500/10 blur-3xl" />
+        <div className="absolute bottom-0 right-1/4 -mb-10 h-48 w-48 rounded-full bg-purple-500/10 blur-2xl" />
 
-        <div className="flex flex-wrap items-center gap-3">
-          <button
-            onClick={loadData}
-            className="inline-flex items-center gap-2 rounded-xl border border-[#E5E7EB] bg-white px-3.5 py-2.5 text-xs font-semibold text-[#111827] shadow-2xs hover:bg-[#FAFAF9]"
-          >
-            <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
-            <span>Refresh</span>
-          </button>
+        <div className="relative z-10 flex flex-col justify-between gap-6 md:flex-row md:items-center">
+          <div>
+            <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3.5 py-1 text-xs font-bold uppercase tracking-wider text-indigo-200 backdrop-blur-md border border-white/10">
+              <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+              Journeys & Itineraries
+            </div>
+            <h1 className="mt-3 text-3xl font-black tracking-tight sm:text-4xl text-white">
+              Trip History
+            </h1>
+            <p className="mt-2 max-w-xl text-sm font-medium text-indigo-100/80 leading-relaxed">
+              Explore your upcoming adventures, view active itineraries, and manage past travel memories in one unified workspace.
+            </p>
+          </div>
 
-          <button
-            onClick={() => setSearchModalOpen(true)}
-            className="inline-flex items-center gap-2 rounded-xl border border-indigo-200 bg-indigo-50/70 px-3.5 py-2.5 text-xs font-semibold text-[#4338CA] hover:bg-indigo-100"
-          >
-            <Search className="h-3.5 w-3.5" />
-            <span>Find & Join Trip</span>
-          </button>
-
-          <Link
-            href="/trips/new"
-            className="inline-flex items-center gap-2 rounded-xl bg-[#4338CA] px-4 py-2.5 text-xs font-semibold text-white shadow-xs hover:bg-[#3730A3]"
-          >
-            <Plus className="h-4 w-4" />
-            <span>Plan New Trip</span>
-          </Link>
+          <div className="flex flex-wrap items-center gap-3">
+            <button
+              onClick={loadTrips}
+              disabled={loading}
+              className="inline-flex items-center gap-2 rounded-xl bg-white/10 px-4 py-2.5 text-sm font-bold text-white border border-white/15 backdrop-blur-md transition hover:bg-white/20 active:scale-95 disabled:opacity-50"
+            >
+              <svg className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+              {loading ? "Syncing..." : "Refresh"}
+            </button>
+            <Link
+              href="/trips/new"
+              className="inline-flex items-center gap-2 rounded-xl bg-white px-5 py-2.5 text-sm font-extrabold text-indigo-900 shadow-lg shadow-indigo-950/20 transition hover:bg-indigo-50 hover:shadow-xl active:scale-95"
+            >
+              <span>+</span> Create New Trip
+            </Link>
+          </div>
         </div>
       </div>
 
+      {/* Global Notifications */}
       {notification && (
-        <div className="mb-6 rounded-xl border border-emerald-200 bg-emerald-50 p-3.5 text-xs font-semibold text-emerald-700 flex items-center justify-between">
-          <span>{notification.message}</span>
-          <button onClick={() => setNotification(null)} className="underline">Dismiss</button>
+        <div
+          className={`mb-6 flex items-center justify-between rounded-2xl border p-4 text-sm font-bold shadow-sm transition-all ${
+            notification.type === "success"
+              ? "border-emerald-200 bg-emerald-50/90 text-emerald-900"
+              : "border-red-200 bg-red-50/90 text-red-900"
+          }`}
+        >
+          <div className="flex items-center gap-3">
+            <span className="text-lg">{notification.type === "success" ? "✅" : "⚠️"}</span>
+            <span>{notification.message}</span>
+          </div>
+          <button
+            onClick={() => setNotification(null)}
+            className="ml-4 rounded-lg px-2.5 py-1 text-xs font-extrabold uppercase tracking-wider hover:bg-black/5"
+          >
+            Dismiss
+          </button>
         </div>
       )}
 
       {error && (
-        <div className="mb-6 rounded-xl border border-rose-200 bg-rose-50 p-3.5 text-xs font-semibold text-rose-700">
-          {error}
+        <div className="mb-6 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-bold text-red-800">
+          ⚠️ {error}
         </div>
       )}
 
-      {/* OVERVIEW STATS */}
-      <div className="grid gap-4 sm:grid-cols-4 mb-8">
-        <StatCard title="Total Trips" value={trips.length} subtitle="All planned" icon={<Compass className="h-5 w-5 text-[#4338CA]" />} />
-        <StatCard title="Active Now" value={activeCount} subtitle="Currently traveling" icon={<Sparkles className="h-5 w-5 text-emerald-600" />} />
-        <StatCard title="Upcoming" value={upcomingCount} subtitle="Coming soon" icon={<Clock className="h-5 w-5 text-indigo-500" />} />
-        <StatCard title="Completed" value={completedCount} subtitle="Past journeys" icon={<CheckCircle2 className="h-5 w-5 text-[#6B7280]" />} />
+      {/* Interactive Stats Cards - Filter directly on click */}
+      <div className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <StatCard
+          title="Total Trips"
+          value={loading ? "…" : String(trips.length)}
+          icon="🧳"
+          color="indigo"
+          active={selectedFilter === "ALL"}
+          onClick={() => setSelectedFilter("ALL")}
+        />
+        <StatCard
+          title="Active Now"
+          value={loading ? "…" : String(activeCount)}
+          icon="✈️"
+          color="emerald"
+          active={selectedFilter === "ACTIVE"}
+          highlight={activeCount > 0}
+          onClick={() => setSelectedFilter("ACTIVE")}
+        />
+        <StatCard
+          title="Planned"
+          value={loading ? "…" : String(plannedCount)}
+          icon="📅"
+          color="purple"
+          active={selectedFilter === "PLANNED"}
+          onClick={() => setSelectedFilter("PLANNED")}
+        />
+        <StatCard
+          title="Completed"
+          value={loading ? "…" : String(completedCount)}
+          icon="🏁"
+          color="teal"
+          active={selectedFilter === "COMPLETED"}
+          onClick={() => setSelectedFilter("COMPLETED")}
+        />
       </div>
 
-      {/* TRIPS GRID WITH SEARCH & FILTER TABS */}
-      <div className="rounded-3xl border border-[#E5E7EB] bg-white p-6 shadow-2xs">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-          <div className="relative min-w-[240px]">
-            <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[#9CA3AF]" />
-            <input
-              type="text"
-              placeholder="Search by title or destination..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full rounded-xl border border-[#E5E7EB] bg-[#FAFAF9] py-2 pl-10 pr-4 text-xs font-medium text-[#111827] outline-none focus:border-[#4338CA] focus:bg-white"
-            />
+      {/* Main Content Area */}
+      <div className="rounded-3xl border border-slate-200/80 bg-white p-6 shadow-sm sm:p-8">
+        {/* Filter & Search Bar */}
+        <div className="mb-7 flex flex-col gap-4 border-b border-slate-100 pb-6 lg:flex-row lg:items-center lg:justify-between">
+          {/* Status Pills */}
+          <div className="flex flex-wrap items-center gap-1.5 rounded-2xl bg-slate-100/80 p-1.5">
+            <button
+              onClick={() => setSelectedFilter("ALL")}
+              className={`rounded-xl px-4 py-2 text-xs font-bold transition-all ${
+                selectedFilter === "ALL"
+                  ? "bg-white text-indigo-700 shadow-sm"
+                  : "text-slate-600 hover:text-slate-900"
+              }`}
+            >
+              All Trips ({trips.length})
+            </button>
+            <button
+              onClick={() => setSelectedFilter("ACTIVE")}
+              className={`rounded-xl px-4 py-2 text-xs font-bold transition-all ${
+                selectedFilter === "ACTIVE"
+                  ? "bg-emerald-600 text-white shadow-sm shadow-emerald-200"
+                  : "text-slate-600 hover:text-slate-900"
+              }`}
+            >
+              Active ({activeCount})
+            </button>
+            <button
+              onClick={() => setSelectedFilter("PLANNED")}
+              className={`rounded-xl px-4 py-2 text-xs font-bold transition-all ${
+                selectedFilter === "PLANNED"
+                  ? "bg-indigo-600 text-white shadow-sm shadow-indigo-200"
+                  : "text-slate-600 hover:text-slate-900"
+              }`}
+            >
+              Planned ({plannedCount})
+            </button>
+            <button
+              onClick={() => setSelectedFilter("COMPLETED")}
+              className={`rounded-xl px-4 py-2 text-xs font-bold transition-all ${
+                selectedFilter === "COMPLETED"
+                  ? "bg-slate-700 text-white shadow-sm"
+                  : "text-slate-600 hover:text-slate-900"
+              }`}
+            >
+              Completed ({completedCount})
+            </button>
           </div>
 
-          <div className="flex rounded-xl border border-[#E5E7EB] bg-[#FAFAF9] p-1">
-            {(["All", "Active", "Upcoming", "Completed"] as const).map((tab) => {
-              const active = activeTab === tab;
-              return (
+          {/* Search Box & Total Budget Badge */}
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+            <div className="relative flex-1 sm:w-72">
+              <svg
+                className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search trip title or location..."
+                className="w-full rounded-xl border border-slate-200 bg-slate-50/50 pl-10 pr-4 py-2 text-xs font-semibold text-slate-800 placeholder-slate-400 transition focus:border-indigo-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-100"
+              />
+              {searchQuery && (
                 <button
-                  key={tab}
-                  onClick={() => setActiveTab(tab)}
-                  className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
-                    active ? "bg-white text-[#111827] shadow-2xs" : "text-[#6B7280] hover:text-[#111827]"
-                  }`}
+                  onClick={() => setSearchQuery("")}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400 hover:text-slate-600"
                 >
-                  {tab}
+                  ✕
                 </button>
-              );
-            })}
+              )}
+            </div>
+
+            {!loading && trips.length > 0 && (
+              <div className="inline-flex items-center gap-1.5 rounded-xl border border-indigo-100 bg-indigo-50/80 px-3.5 py-2 text-xs font-extrabold text-indigo-900 shrink-0">
+                <span className="text-indigo-600">💰</span> Total Budget: {formatBudget(totalBudget)}
+              </div>
+            )}
           </div>
         </div>
 
+        {/* Trips Cards Grid */}
         {loading ? (
-          <div className="p-12 text-center text-xs text-[#6B7280]">Loading trips...</div>
+          <SkeletonGrid />
         ) : filteredTrips.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-[#E5E7EB] bg-[#FAFAF9] p-12 text-center">
-            <p className="text-xs font-semibold text-[#6B7280]">No trips found matching criteria.</p>
-            <Link
-              href="/trips/new"
-              className="mt-3 inline-flex items-center gap-2 rounded-xl bg-[#4338CA] px-4 py-2 text-xs font-semibold text-white"
-            >
-              <Plus className="h-4 w-4" /> Create Trip
-            </Link>
-          </div>
+          <EmptyState searchQuery={searchQuery} filter={selectedFilter} onReset={() => { setSearchQuery(""); setSelectedFilter("ALL"); }} />
         ) : (
           <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
-            {filteredTrips.map((trip) => {
-              const status = getTripStatus(trip.startDate, trip.endDate);
-              return (
-                <article
-                  key={trip.id}
-                  className="group relative flex flex-col justify-between overflow-hidden rounded-2xl border border-[#E5E7EB] bg-white p-5 shadow-2xs hover:shadow-md hover:border-[#D1D5DB] transition duration-200"
-                >
-                  <div>
-                    <div className="relative h-40 w-full overflow-hidden rounded-xl bg-slate-100 mb-4">
-                      <img
-                        src={
-                          trip.destination?.imageUrl ||
-                          "https://images.unsplash.com/photo-1488646953014-85cb44e25828?auto=format&fit=crop&w=600&q=80"
-                        }
-                        alt={trip.title}
-                        className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-                      />
-                      <span className={`absolute top-3 right-3 rounded-full px-3 py-1 text-[10px] font-bold text-white backdrop-blur-xs ${
-                        status === "Active" ? "bg-emerald-600" : status === "Upcoming" ? "bg-[#4338CA]" : "bg-slate-800"
-                      }`}>
-                        {status}
-                      </span>
-                    </div>
-
-                    <h3 className="font-bold text-base text-[#111827] group-hover:text-[#4338CA] transition">{trip.title}</h3>
-                    <p className="mt-1 text-xs text-[#6B7280] flex items-center gap-1">
-                      <MapPin className="h-3.5 w-3.5 text-[#4338CA]" />
-                      <span>{trip.destination?.name || "Destination"}, {trip.destination?.country}</span>
-                    </p>
-
-                    <div className="mt-4 flex flex-wrap gap-2 text-xs text-[#6B7280]">
-                      <span className="flex items-center gap-1 rounded-lg bg-[#FAFAF9] border border-[#E5E7EB] px-2.5 py-1">
-                        <Calendar className="h-3 w-3" /> {formatDate(trip.startDate)} – {formatDate(trip.endDate)}
-                      </span>
-                      {trip.budget && (
-                        <span className="flex items-center gap-1 rounded-lg bg-[#FAFAF9] border border-[#E5E7EB] px-2.5 py-1 font-semibold text-[#111827]">
-                          <Wallet className="h-3 w-3 text-emerald-600" /> ₹{trip.budget.toLocaleString("en-IN")}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="mt-6 flex items-center justify-between border-t border-[#F1F1EF] pt-4">
-                    <Link
-                      href={`/trips/${trip.id}`}
-                      className="rounded-lg bg-indigo-50 px-3 py-1.5 text-xs font-semibold text-[#4338CA] hover:bg-indigo-100 transition"
-                    >
-                      View Details
-                    </Link>
-
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => setDeleteTarget(trip)}
-                        className="rounded-lg p-1.5 text-[#9CA3AF] hover:bg-rose-50 hover:text-rose-600 transition"
-                        title="Delete trip"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-                    </div>
-                  </div>
-                </article>
-              );
-            })}
+            {filteredTrips.map((trip) => (
+              <TripCard key={trip.id} trip={trip} onDeleteClick={() => setDeleteTarget(trip)} />
+            ))}
           </div>
         )}
       </div>
 
-      {/* DELETE MODAL */}
+      {/* Delete Confirmation Modal */}
       {deleteTarget && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#111827]/50 backdrop-blur-xs p-4">
-          <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-2xl">
-            <h3 className="text-base font-bold text-[#111827]">Confirm Deletion</h3>
-            <p className="mt-2 text-xs text-[#6B7280]">
-              Are you sure you want to delete trip <span className="font-bold text-[#111827]">"{deleteTarget.title}"</span>?
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+          <div className="w-full max-w-md overflow-hidden rounded-3xl bg-white p-6 shadow-2xl border border-slate-100">
+            <div className="flex items-center gap-3">
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-red-50 text-xl text-red-600">
+                🗑️
+              </div>
+              <div>
+                <h3 className="text-lg font-black text-slate-900">Delete Trip</h3>
+                <p className="text-xs text-slate-500">This action cannot be undone.</p>
+              </div>
+            </div>
+
+            <p className="mt-4 text-sm leading-relaxed text-slate-600">
+              Are you sure you want to permanently remove <span className="font-extrabold text-slate-900">"{deleteTarget.title}"</span> from your trips?
             </p>
-            <div className="mt-6 flex justify-end gap-3">
+
+            <div className="mt-6 flex items-center justify-end gap-3 border-t border-slate-100 pt-4">
               <button
                 disabled={isDeleting}
                 onClick={() => setDeleteTarget(null)}
-                className="rounded-xl border border-[#E5E7EB] px-4 py-2 text-xs font-semibold text-[#6B7280]"
+                className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-bold text-slate-600 hover:bg-slate-50 disabled:opacity-50"
               >
                 Cancel
               </button>
               <button
                 disabled={isDeleting}
                 onClick={handleDelete}
-                className="rounded-xl bg-rose-600 px-4 py-2 text-xs font-semibold text-white hover:bg-rose-700"
+                className="rounded-xl bg-red-600 px-5 py-2.5 text-xs font-extrabold text-white shadow-md shadow-red-200 transition hover:bg-red-700 disabled:opacity-50"
               >
-                {isDeleting ? "Deleting..." : "Delete"}
+                {isDeleting ? "Deleting..." : "Delete Trip"}
               </button>
             </div>
           </div>
         </div>
       )}
-
-      {/* SEARCH MODAL */}
-      <TripSearchModal isOpen={searchModalOpen} onClose={() => setSearchModalOpen(false)} />
-    </AppShell>
+    </>
   );
 }
 
-function StatCard({ title, value, subtitle, icon }: { title: string; value: number | string; subtitle: string; icon: React.ReactNode }) {
+function TripCard({ trip, onDeleteClick }: { trip: Trip; onDeleteClick: () => void }) {
+  const durationDays = useMemo(() => {
+    if (!trip.startDate || !trip.endDate) return null;
+    const start = new Date(`${trip.startDate}T00:00:00`).getTime();
+    const end = new Date(`${trip.endDate}T00:00:00`).getTime();
+    const diff = Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1;
+    return diff > 0 ? diff : null;
+  }, [trip.startDate, trip.endDate]);
+
   return (
-    <div className="rounded-2xl border border-[#E5E7EB] bg-white p-5 shadow-2xs">
-      <div className="flex items-center justify-between">
-        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#FAFAF9]">{icon}</div>
-        <span className="text-2xl font-extrabold text-[#111827]">{value}</span>
+    <article className="group relative flex flex-col justify-between overflow-hidden rounded-3xl border border-slate-200/80 bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-indigo-300 hover:shadow-xl hover:shadow-indigo-950/5">
+      <div>
+        {/* Cover Photo / Header Graphic */}
+        <div className="relative h-44 w-full overflow-hidden bg-slate-900">
+          {trip.destination?.imageUrl ? (
+            <img
+              src={trip.destination.imageUrl}
+              alt={trip.destination.name}
+              className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+            />
+          ) : (
+            <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-indigo-600 via-indigo-700 to-purple-800 text-5xl">
+              🗺️
+            </div>
+          )}
+          <div className="absolute inset-0 bg-gradient-to-t from-slate-950/70 via-transparent to-transparent" />
+
+          {/* Status Badge */}
+          <div className="absolute top-3.5 right-3.5">
+            <TripStatusBadge
+              status={trip.status}
+              startDate={trip.startDate}
+              endDate={trip.endDate}
+              variant="solid"
+            />
+          </div>
+
+          {/* Duration Badge overlay if present */}
+          {durationDays && (
+            <div className="absolute bottom-3 left-3.5 rounded-lg bg-black/40 px-2.5 py-1 text-[11px] font-bold text-white backdrop-blur-md">
+              ⏱️ {durationDays} {durationDays === 1 ? "Day" : "Days"}
+            </div>
+          )}
+        </div>
+
+        {/* Content Body */}
+        <div className="p-5">
+          <h3 className="line-clamp-1 text-lg font-black tracking-tight text-slate-900 group-hover:text-indigo-600 transition-colors" title={trip.title}>
+            {trip.title}
+          </h3>
+
+          <p className="mt-1 flex items-center gap-1.5 text-xs font-extrabold uppercase tracking-wider text-indigo-600">
+            <span>📍</span>
+            <span className="truncate">
+              {trip.destination?.name
+                ? `${trip.destination.name}${trip.destination.country ? `, ${trip.destination.country}` : ""}`
+                : "Custom Location"}
+            </span>
+          </p>
+
+          {/* Key Details Tags */}
+          <div className="mt-4 flex flex-wrap items-center gap-2">
+            <div className="inline-flex items-center gap-1 rounded-xl bg-slate-100/80 px-2.5 py-1.5 text-xs font-bold text-slate-700">
+              <span>📅</span>
+              <span>{formatDate(trip.startDate)} – {formatDate(trip.endDate)}</span>
+            </div>
+
+            <div className="inline-flex items-center gap-1 rounded-xl bg-indigo-50 px-2.5 py-1.5 text-xs font-extrabold text-indigo-700">
+              <span>💰</span>
+              <span>{trip.budget == null ? "No budget" : formatBudget(Number(trip.budget))}</span>
+            </div>
+          </div>
+
+          {/* Notes preview if present */}
+          {trip.notes && (
+            <p className="mt-3.5 line-clamp-2 text-xs leading-relaxed text-slate-500 bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+              "{trip.notes}"
+            </p>
+          )}
+        </div>
       </div>
-      <p className="mt-3 text-xs font-semibold text-[#111827]">{title}</p>
-      <p className="text-[11px] text-[#6B7280]">{subtitle}</p>
+
+      {/* Action Bar Footer */}
+      <div className="flex items-center justify-between border-t border-slate-100 bg-slate-50/50 px-5 py-3.5">
+        <Link
+          href={`/trips/${trip.id}`}
+          className="inline-flex items-center gap-1 text-xs font-black text-indigo-600 hover:text-indigo-800 transition-colors"
+        >
+          View Details <span className="transition-transform group-hover:translate-x-1">→</span>
+        </Link>
+
+        <div className="flex items-center gap-2">
+          <Link
+            href={`/trips/${trip.id}/edit`}
+            className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-bold text-slate-600 transition hover:bg-slate-100 hover:text-slate-900"
+          >
+            Edit
+          </Link>
+          <button
+            onClick={onDeleteClick}
+            className="rounded-lg border border-red-200 bg-white px-2.5 py-1.5 text-xs font-bold text-red-600 transition hover:bg-red-50 hover:text-red-700"
+          >
+            Delete
+          </button>
+        </div>
+      </div>
+    </article>
+  );
+}
+
+function StatCard({
+  title,
+  value,
+  icon,
+  color,
+  active = false,
+  highlight = false,
+  onClick,
+}: {
+  title: string;
+  value: string;
+  icon: string;
+  color: "indigo" | "emerald" | "purple" | "teal";
+  active?: boolean;
+  highlight?: boolean;
+  onClick: () => void;
+}) {
+  const colorMap = {
+    indigo: "bg-indigo-50 text-indigo-700 border-indigo-100",
+    emerald: "bg-emerald-50 text-emerald-700 border-emerald-100",
+    purple: "bg-purple-50 text-purple-700 border-purple-100",
+    teal: "bg-teal-50 text-teal-700 border-teal-100",
+  };
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`group relative overflow-hidden rounded-3xl border text-left bg-white p-5 shadow-sm transition duration-300 hover:-translate-y-1 hover:border-indigo-400 hover:shadow-lg focus:outline-none ${
+        active
+          ? "ring-2 ring-indigo-600 border-indigo-300 bg-indigo-50/20"
+          : highlight
+          ? "ring-2 ring-emerald-500/20 border-emerald-200"
+          : "border-slate-200/80"
+      }`}
+    >
+      <div className="flex items-center justify-between">
+        <div className={`flex h-12 w-12 items-center justify-center rounded-2xl text-2xl border transition-transform duration-300 group-hover:scale-110 ${colorMap[color]}`}>
+          {icon}
+        </div>
+        <strong className="text-3xl font-black text-slate-900 tracking-tight">{value}</strong>
+      </div>
+      <div className="mt-4 flex items-center justify-between border-t border-slate-100 pt-3">
+        <p className="text-xs font-bold uppercase tracking-wider text-slate-500 group-hover:text-indigo-600 transition-colors">
+          {title}
+        </p>
+        <span className={`text-xs font-extrabold transition-all duration-300 ${active ? "text-indigo-600" : "text-slate-400 group-hover:text-indigo-600 group-hover:translate-x-1"}`}>
+          {active ? "Filtered ✓" : "Filter →"}
+        </span>
+      </div>
+    </button>
+  );
+}
+
+function SkeletonGrid() {
+  return (
+    <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+      {[1, 2, 3].map((i) => (
+        <div key={i} className="animate-pulse overflow-hidden rounded-3xl border border-slate-200 bg-white p-4">
+          <div className="h-40 rounded-2xl bg-slate-200" />
+          <div className="mt-4 h-6 w-3/4 rounded-lg bg-slate-200" />
+          <div className="mt-2 h-4 w-1/2 rounded-lg bg-slate-100" />
+          <div className="mt-4 flex gap-2">
+            <div className="h-7 w-24 rounded-xl bg-slate-100" />
+            <div className="h-7 w-24 rounded-xl bg-slate-100" />
+          </div>
+        </div>
+      ))}
     </div>
   );
 }
 
-function getTripStatus(startDateStr: string, endDateStr: string): "Upcoming" | "Active" | "Completed" {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const start = new Date(`${startDateStr}T00:00:00`);
-  const end = new Date(`${endDateStr}T00:00:00`);
+function TripsLoadingFallback() {
+  return (
+    <div className="py-16 text-center">
+      <div className="mx-auto h-10 w-10 animate-spin rounded-full border-4 border-indigo-600 border-t-transparent" />
+      <p className="mt-4 text-xs font-bold text-slate-500">Loading trips page...</p>
+    </div>
+  );
+}
 
-  if (end < today) return "Completed";
-  if (start <= today && end >= today) return "Active";
-  return "Upcoming";
+function EmptyState({
+  searchQuery,
+  filter,
+  onReset,
+}: {
+  searchQuery: string;
+  filter: string;
+  onReset: () => void;
+}) {
+  const isFiltered = searchQuery || filter !== "ALL";
+
+  return (
+    <div className="rounded-3xl border border-dashed border-slate-300 bg-slate-50/50 p-12 text-center">
+      <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-indigo-50 text-3xl">
+        {isFiltered ? "🔍" : "🧳"}
+      </div>
+      <h3 className="mt-4 text-xl font-black text-slate-900">
+        {isFiltered ? "No matching trips found" : "No trips planned yet"}
+      </h3>
+      <p className="mt-1.5 text-sm text-slate-500 max-w-md mx-auto">
+        {isFiltered
+          ? "No trips matched your search or status filter criteria. Try adjusting your search query."
+          : "Get started by planning your very first vacation, business trip, or weekend getaway."}
+      </p>
+
+      <div className="mt-6 flex items-center justify-center gap-3">
+        {isFiltered ? (
+          <button
+            onClick={onReset}
+            className="rounded-xl border border-slate-300 bg-white px-5 py-2.5 text-xs font-bold text-slate-700 shadow-sm hover:bg-slate-50"
+          >
+            Clear Filters
+          </button>
+        ) : (
+          <Link
+            href="/trips/new"
+            className="rounded-xl bg-indigo-600 px-6 py-3 text-xs font-extrabold text-white shadow-lg shadow-indigo-200 transition hover:bg-indigo-700"
+          >
+            + Create New Trip
+          </Link>
+        )}
+      </div>
+    </div>
+  );
 }
 
 function formatDate(value: string) {
   if (!value) return "";
-  try {
-    return new Date(`${value}T00:00:00`).toLocaleDateString(undefined, { day: "2-digit", month: "short" });
-  } catch {
-    return value;
-  }
+  return new Date(`${value}T00:00:00`).toLocaleDateString(undefined, {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
+}
+
+function formatBudget(value: number) {
+  return new Intl.NumberFormat("en-IN", {
+    style: "currency",
+    currency: "INR",
+    maximumFractionDigits: 0,
+  }).format(value);
 }

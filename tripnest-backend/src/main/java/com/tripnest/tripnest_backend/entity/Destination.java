@@ -36,6 +36,15 @@ public class Destination {
 
     private Double longitude;
 
+    @Column(name = "active", nullable = false)
+    private Boolean active = true;
+
+    @Column(name = "estimated_budget")
+    private Double estimatedBudget;
+
+    @Column(name = "best_travel_season")
+    private String bestTravelSeason;
+
     public Destination(Integer id, String name, String country, String city, String description, String imageUrl, String category) {
         this.id = id;
         this.name = name;
@@ -44,5 +53,26 @@ public class Destination {
         this.description = description;
         this.imageUrl = imageUrl;
         this.category = category;
+        this.active = true;
+    }
+
+    public Destination(Integer id, String name, String country, String city, String description, String imageUrl, String category, Double latitude, Double longitude) {
+        this.id = id;
+        this.name = name;
+        this.country = country;
+        this.city = city;
+        this.description = description;
+        this.imageUrl = imageUrl;
+        this.category = category;
+        this.latitude = latitude;
+        this.longitude = longitude;
+        this.active = true;
+    }
+
+    @PrePersist
+    protected void onCreate() {
+        if (this.active == null) {
+            this.active = true;
+        }
     }
 }

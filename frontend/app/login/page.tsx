@@ -1,20 +1,29 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { API_BASE_URL } from "../../lib/api";
-import { motion } from "framer-motion";
-import { Plane, Mail, Lock, Eye, EyeOff, ArrowRight, MapPin, Sparkles } from "lucide-react";
+import { login } from "../../lib/api";
+import GoogleSignInButton from "../../components/GoogleSignInButton";
+import type { AuthResponse } from "../../lib/types";
 
 export default function LoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [rememberMe, setRememberMe] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // If already authenticated, redirect directly to dashboard
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const token = localStorage.getItem("token");
+      if (token) {
+        router.replace("/dashboard");
+      }
+    }
+  }, [router]);
 
   const validateForm = (): boolean => {
     if (!email.trim()) {
@@ -22,7 +31,7 @@ export default function LoginPage() {
       return false;
     }
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
+    if (!emailRegex.test(email.trim())) {
       setError("Please enter a valid email address.");
       return false;
     }
@@ -33,46 +42,37 @@ export default function LoginPage() {
     return true;
   };
 
+  const handleAuthSuccess = (data: AuthResponse) => {
+    if (data.token) {
+      localStorage.setItem("token", data.token);
+    }
+    localStorage.setItem(
+      "user",
+      JSON.stringify({
+        id: data.id,
+        name: data.name,
+        email: data.email,
+        role: data.role,
+      })
+    );
+    router.replace("/dashboard");
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!validateForm()) return;
+    if (!validateForm() || loading) return;
 
     setLoading(true);
     setError(null);
 
     try {
-      const response = await fetch(`${API_BASE_URL}/auth/login`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ email: email.trim(), password }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || "Login failed. Please check your credentials.");
-      }
-
-      if (data.token) {
-        localStorage.setItem("token", data.token);
-      }
-      localStorage.setItem(
-        "user",
-        JSON.stringify({
-          id: data.id,
-          name: data.name,
-          email: data.email,
-        })
-      );
-
-      router.push("/dashboard");
+      const data = await login({ email: email.trim(), password });
+      handleAuthSuccess(data);
     } catch (err: unknown) {
       if (err instanceof Error) {
         setError(err.message);
       } else {
-        setError("An unexpected error occurred. Please try again.");
+        setError("Invalid email or password. Please try again.");
       }
     } finally {
       setLoading(false);
@@ -80,201 +80,227 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen grid grid-cols-1 lg:grid-cols-12 bg-[#FAFAF9] text-[#111827] font-sans antialiased">
-      {/* LEFT SIDE - IMMERSIVE CINEMATIC TRAVEL VISUAL */}
-      <div className="hidden lg:flex lg:col-span-6 xl:col-span-7 relative bg-[#111827] overflow-hidden flex-col justify-between p-12 text-white">
-        <div className="absolute inset-0 z-0">
-          <img
-            src="https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=1600&q=80"
-            alt="Travel Landscape"
-            className="h-full w-full object-cover opacity-60 filter contrast-[1.05]"
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-[#111827] via-[#111827]/40 to-[#111827]/30" />
-        </div>
+    <div className="relative min-h-screen w-full flex items-center justify-center overflow-hidden bg-[#070b14] text-slate-100 font-sans">
+      {/* Background Glows & Ambient Orbs */}
+      <div className="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] rounded-full bg-indigo-600/20 blur-[130px] pointer-events-none animate-pulse-glow" />
+      <div className="absolute bottom-[-10%] right-[-10%] w-[600px] h-[600px] rounded-full bg-violet-600/20 blur-[150px] pointer-events-none animate-pulse-glow" />
+      <div className="absolute top-[40%] right-[30%] w-[350px] h-[350px] rounded-full bg-fuchsia-600/15 blur-[120px] pointer-events-none" />
 
-        {/* Top Branding */}
-        <div className="relative z-10 flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/20 backdrop-blur-md text-white border border-white/30">
-            <Plane className="h-5 w-5 text-indigo-300" />
-          </div>
-          <span className="text-xl font-bold tracking-tight text-white">TripNest</span>
-        </div>
+      {/* Grid Pattern Overlay */}
+      <div className="absolute inset-0 bg-[linear-gradient(to_right,#1f293715_1px,transparent_1px),linear-gradient(to_bottom,#1f293715_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_50%,#000_70%,transparent_100%)] pointer-events-none" />
 
-        {/* Floating Destination Tags */}
-        <div className="relative z-10 my-auto py-12 max-w-lg space-y-6">
-          <div className="flex flex-wrap gap-2.5">
-            {["Paris 🇫🇷", "Tokyo 🇯🇵", "Bali 🇮🇩", "New York 🇺🇸"].map((dest, i) => (
-              <motion.span
-                key={dest}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.4, delay: i * 0.1 }}
-                className="rounded-full bg-white/15 px-3.5 py-1.5 text-xs font-semibold text-white backdrop-blur-md border border-white/20 shadow-xs"
-              >
-                📍 {dest}
-              </motion.span>
-            ))}
-          </div>
+      <div className="relative z-10 w-full max-w-5xl mx-auto p-4 sm:p-6 lg:p-8 flex items-center justify-center">
+        <div className="w-full grid grid-cols-1 lg:grid-cols-12 gap-8 items-center bg-slate-900/60 backdrop-blur-2xl rounded-3xl border border-white/10 p-6 sm:p-10 shadow-2xl shadow-indigo-950/50">
+          
+          {/* Left Panel: Hero & Visual Showcase (Desktop) */}
+          <div className="hidden lg:flex lg:col-span-6 flex-col justify-between h-full min-h-[520px] rounded-2xl p-8 relative overflow-hidden bg-gradient-to-br from-indigo-950/80 via-slate-900/90 to-slate-950 border border-indigo-500/20 shadow-inner">
+            {/* Background Decorative Image / Gradient */}
+            <div 
+              className="absolute inset-0 bg-cover bg-center opacity-30 mix-blend-overlay transition-transform duration-700 hover:scale-105"
+              style={{ backgroundImage: `url('https://images.unsplash.com/photo-1502602898657-3e91760cbb34?auto=format&fit=crop&w=1000&q=80')` }}
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/60 to-transparent" />
 
-          <blockquote className="space-y-3">
-            <p className="text-3xl xl:text-4xl font-extrabold tracking-tight leading-snug">
-              “Every journey starts with a dream.”
-            </p>
-            <p className="text-sm text-white/80 leading-relaxed">
-              Plan unforgettable experiences around the world with personalized itineraries and real-time travel insights.
-            </p>
-          </blockquote>
-        </div>
-
-        {/* Bottom Credits */}
-        <div className="relative z-10 text-xs text-white/60">
-          © {new Date().getFullYear()} TripNest Platform. Crafted for modern wanderers.
-        </div>
-      </div>
-
-      {/* RIGHT SIDE - MINIMAL AUTH PANEL */}
-      <div className="col-span-1 lg:col-span-6 xl:col-span-5 flex flex-col justify-center px-6 py-12 sm:px-12 md:px-16 lg:px-20 bg-white">
-        <div className="mx-auto w-full max-w-sm">
-          {/* Mobile Logo Header */}
-          <div className="flex lg:hidden items-center gap-2.5 mb-8">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#111827] text-white">
-              <Plane className="h-5 w-5 text-indigo-400" />
+            <div className="relative z-10">
+              <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-indigo-500/20 border border-indigo-400/30 text-indigo-300 text-xs font-semibold tracking-wide uppercase shadow-sm">
+                <span className="w-2 h-2 rounded-full bg-indigo-400 animate-ping" />
+                Next-Gen Travel Platform
+              </div>
+              <h2 className="text-3xl font-extrabold text-white tracking-tight mt-4 leading-tight">
+                Plan Unforgettable Journeys with <span className="bg-gradient-to-r from-indigo-400 via-violet-300 to-fuchsia-400 bg-clip-text text-transparent">TripNest</span>
+              </h2>
+              <p className="text-slate-300 text-sm mt-3 leading-relaxed">
+                Discover curated destinations, manage smart trip itineraries, track real-time weather forecasts, and sync your travel plans seamlessly.
+              </p>
             </div>
-            <span className="text-lg font-bold text-[#111827]">TripNest</span>
-          </div>
 
-          <div className="mb-8">
-            <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-[#111827]">Welcome back 👋</h2>
-            <p className="mt-2 text-xs sm:text-sm text-[#6B7280]">
-              Continue your journey with TripNest.
-            </p>
-          </div>
+            {/* Feature Pills */}
+            <div className="relative z-10 space-y-3 my-6">
+              <div className="flex items-center gap-3 p-3 rounded-xl bg-slate-900/80 border border-white/10 backdrop-blur-md">
+                <div className="w-10 h-10 rounded-lg bg-indigo-600/30 flex items-center justify-center text-xl text-indigo-300 shrink-0">
+                  🗺️
+                </div>
+                <div>
+                  <h4 className="text-xs font-bold text-white">15+ Handcrafted Destinations</h4>
+                  <p className="text-[11px] text-slate-400">Interactive maps & localized insights</p>
+                </div>
+              </div>
 
-          {error && (
-            <div className="mb-6 rounded-xl border border-rose-200 bg-rose-50 p-3.5 text-xs font-semibold text-rose-700">
-              {error}
-            </div>
-          )}
-
-          <form onSubmit={handleSubmit} className="space-y-5" noValidate>
-            <div>
-              <label className="block text-xs font-semibold uppercase tracking-wider text-[#6B7280] mb-2" htmlFor="email">
-                Email Address
-              </label>
-              <div className="relative">
-                <Mail className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[#9CA3AF]" />
-                <input
-                  id="email"
-                  type="email"
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="name@example.com"
-                  className="w-full rounded-xl border border-[#E5E7EB] bg-[#FAFAF9] py-3 pl-10 pr-4 text-xs sm:text-sm text-[#111827] placeholder-[#9CA3AF] outline-none transition focus:border-[#4338CA] focus:bg-white focus:ring-2 focus:ring-indigo-100"
-                />
+              <div className="flex items-center gap-3 p-3 rounded-xl bg-slate-900/80 border border-white/10 backdrop-blur-md">
+                <div className="w-10 h-10 rounded-lg bg-violet-600/30 flex items-center justify-center text-xl text-violet-300 shrink-0">
+                  🌤️
+                </div>
+                <div>
+                  <h4 className="text-xs font-bold text-white">Live Weather Forecasts</h4>
+                  <p className="text-[11px] text-slate-400">Stay prepared for every climate</p>
+                </div>
               </div>
             </div>
 
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <label className="block text-xs font-semibold uppercase tracking-wider text-[#6B7280]" htmlFor="password">
-                  Password
+            {/* User Testimonial Footer */}
+            <div className="relative z-10 border-t border-white/10 pt-4 flex items-center justify-between text-xs text-slate-400">
+              <div className="flex items-center gap-2">
+                <div className="flex -space-x-2">
+                  <div className="w-7 h-7 rounded-full bg-indigo-500 border-2 border-slate-900 flex items-center justify-center text-[10px] font-bold text-white">JD</div>
+                  <div className="w-7 h-7 rounded-full bg-purple-500 border-2 border-slate-900 flex items-center justify-center text-[10px] font-bold text-white">SK</div>
+                  <div className="w-7 h-7 rounded-full bg-emerald-500 border-2 border-slate-900 flex items-center justify-center text-[10px] font-bold text-white">AL</div>
+                </div>
+                <span className="font-semibold text-slate-200">10,000+ Happy Travelers</span>
+              </div>
+              <span className="text-indigo-400 font-bold">★ 4.9 Rating</span>
+            </div>
+          </div>
+
+          {/* Right Panel: Clean Modern Auth Form */}
+          <div className="col-span-1 lg:col-span-6 flex flex-col justify-center px-2 sm:px-4">
+            {/* Logo & Header */}
+            <div className="text-center lg:text-left mb-7">
+              <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-tr from-indigo-600 to-violet-600 border border-indigo-400/40 mb-4 shadow-lg shadow-indigo-600/30 animate-float">
+                <span className="text-2xl">✈️</span>
+              </div>
+              <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
+                Welcome Back
+              </h1>
+              <p className="text-slate-400 text-sm mt-1.5">
+                Sign in to manage your travel itineraries & trips
+              </p>
+            </div>
+
+            {error && (
+              <div className="mb-6 p-4 rounded-2xl bg-rose-500/15 border border-rose-500/30 text-rose-200 text-sm flex items-start gap-3 shadow-lg animate-fadeIn">
+                <span className="text-base">⚠️</span>
+                <span className="leading-snug">{error}</span>
+              </div>
+            )}
+
+            {/* Google OAuth Button */}
+            <div className="mb-5">
+              <GoogleSignInButton
+                onSuccess={handleAuthSuccess}
+                onError={(msg) => setError(msg)}
+                buttonText="Sign in with Google"
+              />
+            </div>
+
+            {/* Divider */}
+            <div className="relative my-5 text-center">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-white/10"></div>
+              </div>
+              <span className="relative px-3.5 bg-slate-900 text-xs font-semibold text-slate-400 uppercase tracking-wider rounded-md">
+                Or continue with email
+              </span>
+            </div>
+
+            <form onSubmit={handleSubmit} className="space-y-4" noValidate>
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2" htmlFor="login-email">
+                  Email Address
                 </label>
-                <a href="#forgot" className="text-xs font-semibold text-[#4338CA] hover:underline">
-                  Forgot password?
-                </a>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                    </svg>
+                  </div>
+                  <input
+                    id="login-email"
+                    type="email"
+                    required
+                    value={email}
+                    onChange={(e) => {
+                      setEmail(e.target.value);
+                      if (error) setError(null);
+                    }}
+                    placeholder="sreekarkn007@gmail.com"
+                    className="w-full pl-11 pr-4 py-3 rounded-xl bg-slate-950/70 border border-white/15 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-400 transition-all duration-200 text-sm shadow-inner"
+                  />
+                </div>
               </div>
-              <div className="relative">
-                <Lock className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[#9CA3AF]" />
-                <input
-                  id="password"
-                  type={showPassword ? "text" : "password"}
-                  required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••"
-                  className="w-full rounded-xl border border-[#E5E7EB] bg-[#FAFAF9] py-3 pl-10 pr-10 text-xs sm:text-sm text-[#111827] placeholder-[#9CA3AF] outline-none transition focus:border-[#4338CA] focus:bg-white focus:ring-2 focus:ring-indigo-100"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[#9CA3AF] hover:text-[#111827]"
-                >
-                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                </button>
+
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider" htmlFor="login-password">
+                    Password
+                  </label>
+                </div>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                    </svg>
+                  </div>
+                  <input
+                    id="login-password"
+                    type={showPassword ? "text" : "password"}
+                    required
+                    value={password}
+                    onChange={(e) => {
+                      setPassword(e.target.value);
+                      if (error) setError(null);
+                    }}
+                    placeholder="••••••••"
+                    className="w-full pl-11 pr-11 py-3 rounded-xl bg-slate-950/70 border border-white/15 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-400 transition-all duration-200 text-sm shadow-inner"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-slate-200 transition-colors focus:outline-none"
+                    aria-label={showPassword ? "Hide password" : "Show password"}
+                  >
+                    {showPassword ? (
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" d="M13.875 18.825A10.05 10.05 0 0112 19c-7 0-10-7-10-7a17.9 17.9 0 014.285-4.662M9.88 9.88a3 3 0 104.24 4.24M15 12a3 3 0 00-3-3m0-4.5A10.05 10.05 0 0122 12s-3 7-10 7a10.05 10.05 0 01-4.875-1.175M3 3l18 18" />
+                      </svg>
+                    ) : (
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                      </svg>
+                    )}
+                  </button>
+                </div>
               </div>
+
+              <button
+                id="login-submit-btn"
+                type="submit"
+                disabled={loading}
+                className="w-full py-3.5 px-4 gradient-btn text-white font-semibold text-sm rounded-xl shadow-xl focus:outline-none focus:ring-2 focus:ring-indigo-400 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2.5 mt-2"
+              >
+                {loading ? (
+                  <>
+                    <svg className="animate-spin h-5 w-5 text-white" viewBox="0 0 24 24" fill="none">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <span>Authenticating...</span>
+                  </>
+                ) : (
+                  <>
+                    <span>Sign In with Email</span>
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                    </svg>
+                  </>
+                )}
+              </button>
+            </form>
+
+            <div className="mt-7 text-center text-sm text-slate-400">
+              Don&apos;t have an account?{" "}
+              <Link
+                href="/register"
+                className="font-bold text-indigo-400 hover:text-indigo-300 underline underline-offset-4 transition-colors"
+              >
+                Register here
+              </Link>
             </div>
-
-            <div className="flex items-center justify-between text-xs text-[#6B7280]">
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={rememberMe}
-                  onChange={(e) => setRememberMe(e.target.checked)}
-                  className="rounded border-[#E5E7EB] text-[#4338CA] focus:ring-indigo-500"
-                />
-                <span>Remember this device</span>
-              </label>
-            </div>
-
-            <button
-              id="login-submit-btn"
-              type="submit"
-              disabled={loading}
-              className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#4338CA] py-3.5 text-xs sm:text-sm font-semibold text-white shadow-sm hover:bg-[#3730A3] transition disabled:opacity-50"
-            >
-              {loading ? (
-                <span>Authenticating...</span>
-              ) : (
-                <>
-                  <span>Sign In</span>
-                  <ArrowRight className="h-4 w-4" />
-                </>
-              )}
-            </button>
-          </form>
-
-          <div className="my-6 flex items-center gap-3">
-            <div className="h-px flex-1 bg-[#E5E7EB]" />
-            <span className="text-[11px] font-semibold uppercase tracking-wider text-[#9CA3AF]">OR</span>
-            <div className="h-px flex-1 bg-[#E5E7EB]" />
           </div>
 
-          {/* Social Login Button */}
-          <button
-            type="button"
-            onClick={() => setError("Google Sign In requires SSO server configuration.")}
-            className="flex w-full items-center justify-center gap-3 rounded-xl border border-[#E5E7EB] bg-white py-3 text-xs sm:text-sm font-semibold text-[#111827] shadow-2xs hover:bg-[#FAFAF9] transition"
-          >
-            <svg className="h-4 w-4" viewBox="0 0 24 24">
-              <path
-                fill="#4285F4"
-                d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-              />
-              <path
-                fill="#34A853"
-                d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-              />
-              <path
-                fill="#FBBC05"
-                d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"
-              />
-              <path
-                fill="#EA4335"
-                d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
-              />
-            </svg>
-            <span>Continue with Google</span>
-          </button>
-
-          <p className="mt-8 text-center text-xs text-[#6B7280]">
-            Don&apos;t have an account?{" "}
-            <Link href="/register" className="font-bold text-[#4338CA] hover:underline">
-              Create Account
-            </Link>
-          </p>
         </div>
       </div>
     </div>
   );
 }
+

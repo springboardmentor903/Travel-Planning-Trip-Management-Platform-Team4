@@ -7,11 +7,8 @@ import com.tripnest.tripnest_backend.entity.Destination;
 import com.tripnest.tripnest_backend.entity.Role;
 import com.tripnest.tripnest_backend.entity.Trip;
 import com.tripnest.tripnest_backend.entity.User;
-import com.tripnest.tripnest_backend.entity.TripMembership;
 import com.tripnest.tripnest_backend.exception.ResourceNotFoundException;
-import com.tripnest.tripnest_backend.exception.UnauthorizedTripMembershipOperationException;
 import com.tripnest.tripnest_backend.repository.DestinationRepository;
-import com.tripnest.tripnest_backend.repository.TripMembershipRepository;
 import com.tripnest.tripnest_backend.repository.TripRepository;
 import com.tripnest.tripnest_backend.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -43,10 +40,7 @@ class TripServiceTest {
     private DestinationRepository destinationRepository;
 
     @Mock
-    private TripMembershipRepository tripMembershipRepository;
-
-    @Mock
-    private TripAccessService tripAccessService;
+    private NotificationService notificationService;
 
     @InjectMocks
     private TripService tripService;
@@ -86,27 +80,12 @@ class TripServiceTest {
         assertEquals("Paris Vacation", response.getTitle());
         assertEquals("usera@example.com", response.getUserEmail());
         verify(tripRepository, times(1)).save(any(Trip.class));
-        verify(tripMembershipRepository, times(1)).save(any(TripMembership.class));
-    }
-
-    @Test
-    void testGetUserTrips_Success() {
-        when(userRepository.findByEmail("usera@example.com")).thenReturn(Optional.of(userA));
-        Trip trip1 = new Trip(100, "Owned Trip", userA, destination, LocalDate.now().plusDays(1), LocalDate.now().plusDays(5), 1000.0, "Notes", LocalDateTime.now());
-        when(tripRepository.findByUserEmail("usera@example.com")).thenReturn(List.of(trip1));
-        when(tripMembershipRepository.findByUserId(10)).thenReturn(List.of());
-
-        List<TripResponse> userTrips = tripService.getUserTrips("usera@example.com");
-
-        assertEquals(1, userTrips.size());
-        assertEquals("Owned Trip", userTrips.get(0).getTitle());
     }
 
     @Test
     void testGetTripById_Success() {
         Trip trip = new Trip(100, "Paris Trip", userA, destination, LocalDate.now().plusDays(1), LocalDate.now().plusDays(5), 1000.0, "Notes", LocalDateTime.now());
-        doNothing().when(tripAccessService).validateTripAccess(100, "usera@example.com");
-        when(tripRepository.findById(100)).thenReturn(Optional.of(trip));
+        when(tripRepository.findByIdAndUserEmail(100, "usera@example.com")).thenReturn(Optional.of(trip));
 
         TripResponse response = tripService.getTripById(100, "usera@example.com");
 
@@ -117,11 +96,10 @@ class TripServiceTest {
     }
 
     @Test
-    void testGetTripById_Unauthorized() {
-        doThrow(new UnauthorizedTripMembershipOperationException("Access denied"))
-                .when(tripAccessService).validateTripAccess(100, "userb@example.com");
+    void testGetTripById_NotFoundOrUnauthorized() {
+        when(tripRepository.findByIdAndUserEmail(100, "userb@example.com")).thenReturn(Optional.empty());
 
-        assertThrows(UnauthorizedTripMembershipOperationException.class, () -> tripService.getTripById(100, "userb@example.com"));
+        assertThrows(ResourceNotFoundException.class, () -> tripService.getTripById(100, "userb@example.com"));
     }
 
     @Test
@@ -129,8 +107,7 @@ class TripServiceTest {
         Trip trip = new Trip(100, "Old Title", userA, destination, LocalDate.now().plusDays(1), LocalDate.now().plusDays(5), 1000.0, "Notes", LocalDateTime.now());
         UpdateTripRequest updateRequest = new UpdateTripRequest("Updated Title", 1, LocalDate.now().plusDays(2), LocalDate.now().plusDays(7), 2000.0, "Updated Notes");
 
-        doNothing().when(tripAccessService).validateTripManagement(100, "usera@example.com");
-        when(tripRepository.findById(100)).thenReturn(Optional.of(trip));
+        when(tripRepository.findByIdAndUserEmail(100, "usera@example.com")).thenReturn(Optional.of(trip));
         when(destinationRepository.findById(1)).thenReturn(Optional.of(destination));
         when(tripRepository.save(any(Trip.class))).thenReturn(trip);
 
@@ -143,17 +120,15 @@ class TripServiceTest {
     @Test
     void testUpdateTrip_Unauthorized() {
         UpdateTripRequest updateRequest = new UpdateTripRequest("Updated Title", 1, LocalDate.now().plusDays(2), LocalDate.now().plusDays(7), 2000.0, "Updated Notes");
-        doThrow(new UnauthorizedTripMembershipOperationException("Access denied"))
-                .when(tripAccessService).validateTripManagement(100, "userb@example.com");
+        when(tripRepository.findByIdAndUserEmail(100, "userb@example.com")).thenReturn(Optional.empty());
 
-        assertThrows(UnauthorizedTripMembershipOperationException.class, () -> tripService.updateTrip(100, updateRequest, "userb@example.com"));
+        assertThrows(ResourceNotFoundException.class, () -> tripService.updateTrip(100, updateRequest, "userb@example.com"));
     }
 
     @Test
     void testDeleteTrip_Success() {
         Trip trip = new Trip(100, "Trip to Delete", userA, destination, LocalDate.now().plusDays(1), LocalDate.now().plusDays(5), 1000.0, "Notes", LocalDateTime.now());
-        doNothing().when(tripAccessService).validateTripManagement(100, "usera@example.com");
-        when(tripRepository.findById(100)).thenReturn(Optional.of(trip));
+        when(tripRepository.findByIdAndUserEmail(100, "usera@example.com")).thenReturn(Optional.of(trip));
 
         tripService.deleteTrip(100, "usera@example.com");
 
@@ -162,10 +137,9 @@ class TripServiceTest {
 
     @Test
     void testDeleteTrip_Unauthorized() {
-        doThrow(new UnauthorizedTripMembershipOperationException("Access denied"))
-                .when(tripAccessService).validateTripManagement(100, "userb@example.com");
+        when(tripRepository.findByIdAndUserEmail(100, "userb@example.com")).thenReturn(Optional.empty());
 
-        assertThrows(UnauthorizedTripMembershipOperationException.class, () -> tripService.deleteTrip(100, "userb@example.com"));
+        assertThrows(ResourceNotFoundException.class, () -> tripService.deleteTrip(100, "userb@example.com"));
         verify(tripRepository, never()).delete(any());
     }
 }

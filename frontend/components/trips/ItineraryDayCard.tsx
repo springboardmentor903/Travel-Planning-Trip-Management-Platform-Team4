@@ -178,6 +178,7 @@ export default function ItineraryDayCard({
       <ActivityModal
         isOpen={activityModalOpen}
         initialData={editingActivity}
+        defaultDate={day.date}
         onSave={handleSaveActivity}
         onClose={() => {
           setActivityModalOpen(false);

@@ -49,44 +49,36 @@ public class DataSeeder implements CommandLineRunner {
             userRepository.save(admin);
         }
 
-        if (destinationRepository.count() < 10) {
-            List<Destination> seededDestinations = List.of(
-                // India
-                new Destination(null, "Goa", "India", "Panaji", "Sun-kissed beaches, Portuguese architecture, vibrant nightlife, and water sports.", "https://images.unsplash.com/photo-1512343879784-a960bf40e7f2", "Beach"),
-                new Destination(null, "Kerala", "India", "Kochi", "Serene backwaters, lush tea plantations, Ayurvedic wellness, and houseboats.", "https://images.unsplash.com/photo-1602216056096-3b40cc0c9944", "Nature"),
-                new Destination(null, "Manali", "India", "Manali", "Snow-capped Himalayan peaks, adventure sports, river rafting, and scenic valleys.", "https://images.unsplash.com/photo-1626621341517-bbf3d9990a23", "Adventure"),
-                new Destination(null, "Jaipur", "India", "Jaipur", "The Pink City featuring majestic forts, royal palaces, vibrant bazaars, and heritage.", "https://images.unsplash.com/photo-1477587458883-47145ed94245", "Culture"),
-                new Destination(null, "Mumbai", "India", "Mumbai", "India's financial capital, Bollywood, Gateway of India, and vibrant coastal life.", "https://images.unsplash.com/photo-1570168007204-dfb528c6958f", "City"),
-                new Destination(null, "Delhi", "India", "New Delhi", "Capital city blending ancient monuments, Red Fort, Qutub Minar, and street food.", "https://images.unsplash.com/photo-1587474260584-136574528ed5", "Culture"),
-                new Destination(null, "Hyderabad", "India", "Hyderabad", "City of Pearls, famous for Charminar, historic forts, and authentic Dum Biryani.", "https://images.unsplash.com/photo-1605649487212-47bdab06cf68", "Culture"),
-                new Destination(null, "Bengaluru", "India", "Bengaluru", "India's Silicon Valley, lush Lalbagh botanical gardens, cool climate, and pub culture.", "https://images.unsplash.com/photo-1596176530529-78163a4f7af2", "City"),
-                new Destination(null, "Ooty", "India", "Ooty", "Queen of Hill Stations with Nilgiri mountain railway, tea gardens, and misty hills.", "https://images.unsplash.com/photo-1544735716-392fe2489ffa", "Nature"),
-                new Destination(null, "Pondicherry", "India", "Puducherry", "French colonial charm, tranquil beaches, Auroville, and seaside promenade.", "https://images.unsplash.com/photo-1582510003544-4d00b7f74220", "Beach"),
+        // Comprehensive seed list of world destinations
+        List<Destination> defaultDestinations = List.of(
+            new Destination(null, "Paris", "France", "Paris", "The City of Light, famous for the Eiffel Tower, Louvre Museum, and rich culinary culture.", "https://images.unsplash.com/photo-1502602898657-3e91760cbb34", "Metropolitan", 48.8566, 2.3522),
+            new Destination(null, "Tokyo", "Japan", "Tokyo", "A bustling metropolis blending ultra-modern skyscrapers with historic temples and world-class cuisine.", "https://images.unsplash.com/photo-1503899036084-c55cdd92da26", "Metropolitan", 35.6762, 139.6503),
+            new Destination(null, "Bali", "Indonesia", "Denpasar", "Tropical paradise known for its volcanic mountains, iconic rice paddies, pristine beaches, and coral reefs.", "https://images.unsplash.com/photo-1537996194471-e657df975ab4", "Beach & Nature", -8.4095, 115.1889),
+            new Destination(null, "New York", "United States", "New York", "The city that never sleeps, featuring Times Square, Central Park, Broadway theaters, and iconic skyline.", "https://images.unsplash.com/photo-1496442226666-8d4d0e62e6e9", "Metropolitan", 40.7128, -74.0060),
+            new Destination(null, "Rome", "Italy", "Rome", "The Eternal City, home to the Colosseum, Roman Forum, Trevi Fountain, and Vatican City.", "https://images.unsplash.com/photo-1552832230-c0197dd311b5", "Historical", 41.9028, 12.4964),
+            new Destination(null, "London", "United Kingdom", "London", "A royal city steeped in history, featuring Big Ben, Tower Bridge, British Museum, and vibrant West End.", "https://images.unsplash.com/photo-1513635269975-59663e0ac1ad", "Metropolitan", 51.5074, -0.1278),
+            new Destination(null, "Sydney", "Australia", "Sydney", "Breathtaking harbor city world-famous for the Sydney Opera House, Bondi Beach, and vibrant waterfront.", "https://images.unsplash.com/photo-1506973035872-a4ec16b8e8d9", "Coastal", -33.8688, 151.2093),
+            new Destination(null, "Dubai", "United Arab Emirates", "Dubai", "Futuristic city of luxury shopping, ultramodern architecture like the Burj Khalifa, and desert safaris.", "https://images.unsplash.com/photo-1512453979798-5ea266f8880c", "Luxury & Desert", 25.2048, 55.2708),
+            new Destination(null, "Santorini", "Greece", "Thira", "Iconic Aegean island with whitewashed cliffside villages, blue-domed churches, and volcanic beaches.", "https://images.unsplash.com/photo-1570077188670-e3a8d69ac5ff", "Coastal & Island", 36.3932, 25.4615),
+            new Destination(null, "Cairo", "Egypt", "Cairo", "Land of Pharaohs, featuring the Great Pyramids of Giza, the Sphinx, and the ancient Egyptian Museum.", "https://images.unsplash.com/photo-1572252821143-035a4d048d08", "Historical", 30.0444, 31.2357),
+            new Destination(null, "Kyoto", "Japan", "Kyoto", "Japan's cultural heartland, famed for classical Buddhist temples, gardens, shrines, and traditional tea houses.", "https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e", "Cultural", 35.0116, 135.7681),
+            new Destination(null, "Rio de Janeiro", "Brazil", "Rio de Janeiro", "Vibrant coastal city known for Copacabana and Ipanema beaches, Sugarloaf Mountain, and Christ the Redeemer.", "https://images.unsplash.com/photo-1483729558449-99ef09a8c325", "Coastal & Nature", -22.9068, -43.1729),
+            new Destination(null, "Barcelona", "Spain", "Barcelona", "Vibrant Catalan capital famous for Antoni Gaudí's Sagrada Família, Gothic Quarter, and Mediterranean coast.", "https://images.unsplash.com/photo-1539037116277-4db20889f2d4", "Cultural & Beach", 41.3851, 2.1734),
+            new Destination(null, "Cape Town", "South Africa", "Cape Town", "Breathtaking port city beneath Table Mountain, known for stunning coastlines, wineries, and wildlife reserves.", "https://images.unsplash.com/photo-1580619305218-8423a7ef79b4", "Coastal & Nature", -33.9249, 18.4241),
+            new Destination(null, "Swiss Alps", "Switzerland", "Interlaken", "Majestic alpine landscape featuring snow-capped peaks, crystal-clear lakes, hiking trails, and ski resorts.", "https://images.unsplash.com/photo-1530122037265-a5f1f91d3b99", "Mountain & Nature", 46.5588, 8.5403)
+        );
 
-                // Asia
-                new Destination(null, "Tokyo", "Japan", "Tokyo", "A bustling metropolis blending ultra-modern skyscrapers with historic temples.", "https://images.unsplash.com/photo-1503899036084-c55cdd92da26", "City"),
-                new Destination(null, "Bali", "Indonesia", "Denpasar", "Tropical paradise known for volcanic mountains, iconic rice paddies, and beaches.", "https://images.unsplash.com/photo-1537996194471-e657df975ab4", "Beach"),
-                new Destination(null, "Bangkok", "Thailand", "Bangkok", "Ornate shrines, vibrant street life, floating markets, and famous nightlife.", "https://images.unsplash.com/photo-1508009603885-50cf7c579365", "Culture"),
-                new Destination(null, "Singapore", "Singapore", "Singapore", "Futuristic Gardens by the Bay, luxury shopping, Marina Bay Sands, and hawker food.", "https://images.unsplash.com/photo-1525625293386-3f8f99389edd", "Luxury"),
-                new Destination(null, "Dubai", "UAE", "Dubai", "Iconic Burj Khalifa, desert safaris, luxury shopping malls, and futuristic architecture.", "https://images.unsplash.com/photo-1512453979798-5ea266f8880c", "Luxury"),
-
-                // Europe
-                new Destination(null, "Paris", "France", "Paris", "The City of Light, famous for the Eiffel Tower, Louvre Museum, and rich culture.", "https://images.unsplash.com/photo-1502602898657-3e91760cbb34", "Culture"),
-                new Destination(null, "London", "UK", "London", "Historic capital featuring Big Ben, Tower Bridge, West End theatre, and museums.", "https://images.unsplash.com/photo-1513635269975-59663e0ac1ad", "City"),
-                new Destination(null, "Rome", "Italy", "Rome", "The Eternal City with ancient Colosseum, Vatican City, and world-class Italian cuisine.", "https://images.unsplash.com/photo-1552832230-c0197dd311b5", "Culture"),
-                new Destination(null, "Amsterdam", "Netherlands", "Amsterdam", "Picturesque canals, Van Gogh museum, historic townhouses, and cycling culture.", "https://images.unsplash.com/photo-1512470876302-972faa2aa9a4", "City"),
-                new Destination(null, "Switzerland", "Switzerland", "Zurich", "Alpine landscapes, glacier peaks, pristine mountain lakes, and luxury resorts.", "https://images.unsplash.com/photo-1530122037265-a5f1f91d3b99", "Nature"),
-
-                // Americas & Other
-                new Destination(null, "New York", "USA", "New York", "The Big Apple featuring Times Square, Central Park, Broadway, and Empire State Building.", "https://images.unsplash.com/photo-1496442226666-8d4d0e62e6e9", "City"),
-                new Destination(null, "Maldives", "Maldives", "Male", "Overwater villas, crystal clear turquoise lagoons, coral reefs, and luxury islands.", "https://images.unsplash.com/photo-1514282401047-d79a71a590e8", "Luxury"),
-                new Destination(null, "Sydney", "Australia", "Sydney", "Opera House, Harbour Bridge, Bondi Beach, and vibrant coastal lifestyle.", "https://images.unsplash.com/photo-1506973035872-a4ec16b8e8d9", "Beach")
-            );
-
-            for (Destination d : seededDestinations) {
-                if (!destinationRepository.existsByName(d.getName())) {
-                    destinationRepository.save(d);
-                }
+        for (Destination target : defaultDestinations) {
+            Destination existing = destinationRepository.findByName(target.getName()).orElse(null);
+            if (existing == null) {
+                destinationRepository.save(target);
+            } else {
+                // Ensure coordinates, category, and image URL are fully populated
+                if (existing.getCategory() == null) existing.setCategory(target.getCategory());
+                if (existing.getLatitude() == null) existing.setLatitude(target.getLatitude());
+                if (existing.getLongitude() == null) existing.setLongitude(target.getLongitude());
+                if (existing.getImageUrl() == null || existing.getImageUrl().isEmpty()) existing.setImageUrl(target.getImageUrl());
+                destinationRepository.save(existing);
             }
         }
     }

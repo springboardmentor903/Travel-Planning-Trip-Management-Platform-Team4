@@ -47,7 +47,7 @@ export default function TripDetailPage() {
       setTrip(tripData);
       setMembers(memberList);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Unable to load trip details from backend.");
+      setError(err instanceof Error ? err.message : "Unable to load trip details.");
     } finally {
       setLoading(false);
     }
@@ -107,7 +107,7 @@ export default function TripDetailPage() {
       {loading ? (
         <div className="rounded-2xl border border-slate-200 bg-white p-12 text-center text-sm font-semibold text-slate-500">
           <div className="mx-auto mb-3 h-8 w-8 animate-spin rounded-full border-4 border-indigo-600 border-t-transparent" />
-          Loading trip details from backend…
+          Loading trip details…
         </div>
       ) : !trip ? (
         <div className="rounded-2xl border border-slate-200 bg-white p-12 text-center">

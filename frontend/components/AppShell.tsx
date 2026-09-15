@@ -3,34 +3,15 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import {
-  LayoutDashboard,
-  Compass,
-  Calendar,
-  MapPin,
-  Bookmark,
-  User as UserIcon,
-  Settings,
-  LogOut,
-  Menu,
-  X,
-  Plane,
-  ChevronRight,
-} from "lucide-react";
-import NotificationBell from "./NotificationBell";
-
-type User = {
-  id?: number | string;
-  name?: string;
-  email?: string;
-};
+import type { User } from "../lib/types";
 
 const navItems = [
-  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/trips", label: "My Trips", icon: Calendar },
-  { href: "/destinations", label: "Explore", icon: Compass },
-  { href: "/trips/new", label: "Trip Planner", icon: MapPin },
-  { href: "/profile", label: "Favorites", icon: Bookmark },
+  { href: "/dashboard", label: "Dashboard", icon: "⌂" },
+  { href: "/trips", label: "Trip History", icon: "✈" },
+  { href: "/destinations", label: "Destinations", icon: "🌍" },
+  { href: "/notifications", label: "Notifications", icon: "🔔" },
+  { href: "/profile", label: "Profile", icon: "◯" },
+  { href: "/settings", label: "Account Settings", icon: "⚙" },
 ];
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
@@ -38,27 +19,33 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [checkingAuth, setCheckingAuth] = useState(true);
 
   useEffect(() => {
-    const token = localStorage.getItem("token");
-    if (!token) {
-      router.replace("/login");
-      return;
-    }
-
-    const storedUser = localStorage.getItem("user");
-    if (storedUser) {
-      try {
-        setUser(JSON.parse(storedUser));
-      } catch {
-        setUser(null);
+    if (typeof window !== "undefined") {
+      const token = localStorage.getItem("token");
+      if (!token) {
+        router.replace("/login");
+        return;
       }
+
+      const storedUser = localStorage.getItem("user");
+      if (storedUser) {
+        try {
+          setUser(JSON.parse(storedUser));
+        } catch {
+          setUser(null);
+        }
+      }
+      setCheckingAuth(false);
     }
   }, [router]);
 
   const logout = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("token");
+      localStorage.removeItem("user");
+    }
     router.replace("/login");
   };
 
@@ -70,200 +57,190 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       .slice(0, 2)
       .toUpperCase() || "TN";
 
-  const pageTitle =
-    pathname === "/dashboard"
-      ? "Dashboard"
-      : pathname === "/trips"
-      ? "My Trips"
-      : pathname === "/destinations"
-      ? "Explore Destinations"
-      : pathname === "/trips/new"
-      ? "Trip Planner"
-      : pathname === "/profile"
-      ? "Profile & Favorites"
-      : "Settings";
+  const getPageTitle = (path: string) => {
+    if (path === "/dashboard") return "Dashboard";
+    if (path === "/admin/users") return "User Management";
+    if (path === "/admin/destinations") return "Destination Management";
+    if (path === "/admin/trips") return "Trip Management";
+    if (path.startsWith("/admin")) return "Administrator Analytics";
+    if (path.startsWith("/trips/new")) return "Plan a Trip";
+    if (path.includes("/edit")) return "Edit Trip";
+    if (path.startsWith("/trips/")) return "Trip Details";
+    if (path.startsWith("/trips")) return "Trip History";
+    if (path.startsWith("/destinations/")) return "Destination Details";
+    if (path.startsWith("/destinations")) return "Destinations Catalog";
+    if (path.startsWith("/notifications")) return "Notifications & Reminders";
+    if (path.startsWith("/profile")) return "Profile";
+    if (path.startsWith("/settings")) return "Account Settings";
+    return "TripNest";
+  };
+
+  const pageTitle = getPageTitle(pathname);
+
+  const displayNavItems = user?.role === "ADMINISTRATOR"
+    ? [
+        { href: "/admin", label: "Admin Dashboard", icon: "📊" },
+        { href: "/admin/users", label: "Users", icon: "👥" },
+        { href: "/admin/destinations", label: "Destinations", icon: "🌍" },
+        { href: "/admin/trips", label: "Trips", icon: "✈" },
+        { href: "/notifications", label: "Audit Logs", icon: "📜" },
+        { href: "/profile", label: "Profile", icon: "◯" },
+        { href: "/settings", label: "Account Settings", icon: "⚙" },
+      ]
+    : navItems;
+
+  if (checkingAuth) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-slate-50">
+        <div className="text-center">
+          <div className="mx-auto h-10 w-10 animate-spin rounded-full border-4 border-indigo-600 border-t-transparent" />
+          <p className="mt-3 text-sm font-semibold text-slate-600">Loading TripNest environment…</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-[#FAFAF9] text-[#111827] antialiased">
-      {/* Desktop Sidebar */}
-      <aside className="fixed inset-y-0 left-0 z-40 hidden w-64 flex-col border-r border-[#E5E7EB] bg-white lg:flex">
-        {/* Logo Header */}
-        <div className="flex h-20 items-center gap-3 border-b border-[#F1F1EF] px-6">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#111827] text-white">
-            <Plane className="h-5 w-5 text-indigo-400" />
+    <div className="min-h-screen bg-slate-50 text-slate-900 selection:bg-indigo-500 selection:text-white">
+      {/* Desktop sidebar */}
+      <aside className="fixed inset-y-0 left-0 z-40 hidden w-72 flex-col border-r border-slate-200/90 bg-white/95 backdrop-blur-xl lg:flex shadow-sm">
+        <div className="flex h-20 items-center gap-3 border-b border-slate-200/90 px-6">
+          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-indigo-600 text-xl text-white shadow-md shadow-indigo-200">
+            ✈️
           </div>
           <div>
-            <span className="text-lg font-bold tracking-tight text-[#111827]">TripNest</span>
-            <span className="ml-1.5 text-[10px] font-semibold uppercase tracking-wider text-[#4338CA] bg-indigo-50 px-1.5 py-0.5 rounded">Pro</span>
+            <p className="text-lg font-extrabold tracking-tight text-slate-900">TripNest</p>
+            <p className="text-xs font-semibold text-slate-500">Travel planner</p>
           </div>
         </div>
 
-        {/* Navigation Items */}
-        <nav className="flex-1 space-y-1 p-3 pt-6">
-          <p className="px-3 pb-2 text-[11px] font-semibold uppercase tracking-widest text-[#9CA3AF]">
+        <nav className="flex-1 space-y-1.5 p-4">
+          <p className="px-3 pb-2 pt-1 text-[11px] font-bold uppercase tracking-wider text-slate-400">
             Workspace
           </p>
-          {navItems.map((item) => {
-            const active = pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(item.href) && item.href.length > 5);
-            const Icon = item.icon;
+          {displayNavItems.map((item) => {
+            const active =
+              pathname === item.href ||
+              (item.href !== "/dashboard" && pathname.startsWith(item.href));
             return (
               <Link
                 key={item.href}
                 href={item.href}
-                className={`group flex items-center justify-between rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-150 ${
+                className={`flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-semibold transition-all ${
                   active
-                    ? "border-l-[3px] border-[#4338CA] bg-[#F1F1EF] text-[#111827] font-semibold"
-                    : "text-[#6B7280] hover:bg-[#FAFAF9] hover:text-[#111827]"
+                    ? "bg-indigo-50 text-indigo-700 font-bold border-l-4 border-indigo-600 shadow-xs"
+                    : "text-slate-600 hover:bg-slate-100/80 hover:text-slate-900"
                 }`}
               >
-                <div className="flex items-center gap-3">
-                  <Icon className={`h-4 w-4 transition-colors ${active ? "text-[#4338CA]" : "text-[#9CA3AF] group-hover:text-[#111827]"}`} />
-                  <span>{item.label}</span>
-                </div>
-                {active && <ChevronRight className="h-3.5 w-3.5 text-[#4338CA]" />}
+                <span className="flex w-5 justify-center text-lg">{item.icon}</span>
+                {item.label}
               </Link>
             );
           })}
         </nav>
 
-        {/* Bottom Section */}
-        <div className="border-t border-[#F1F1EF] p-3 space-y-1">
-          <Link
-            href="/profile"
-            className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-[#6B7280] hover:bg-[#FAFAF9] hover:text-[#111827] ${
-              pathname === "/profile" ? "bg-[#F1F1EF] text-[#111827]" : ""
-            }`}
-          >
-            <UserIcon className="h-4 w-4 text-[#9CA3AF]" />
-            <span>Profile</span>
-          </Link>
-          <Link
-            href="/settings"
-            className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-[#6B7280] hover:bg-[#FAFAF9] hover:text-[#111827] ${
-              pathname === "/settings" ? "bg-[#F1F1EF] text-[#111827]" : ""
-            }`}
-          >
-            <Settings className="h-4 w-4 text-[#9CA3AF]" />
-            <span>Settings</span>
-          </Link>
-
-          {/* User Card */}
-          <div className="mt-3 flex items-center justify-between rounded-xl border border-[#E5E7EB] bg-[#FAFAF9] p-3">
-            <div className="flex items-center gap-3 min-w-0">
-              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#111827] text-xs font-bold text-white">
-                {initials}
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-xs font-semibold text-[#111827]">{user?.name || "Traveler"}</p>
-                <p className="truncate text-[11px] text-[#6B7280]">{user?.email || "Signed in"}</p>
-              </div>
+        <div className="border-t border-slate-200/90 p-4 space-y-3 bg-slate-50/50">
+          <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white p-3 shadow-xs">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-indigo-600 text-xs font-extrabold text-white shadow-sm">
+              {initials}
             </div>
-            <button
-              onClick={logout}
-              title="Sign out"
-              className="rounded-lg p-1.5 text-[#9CA3AF] hover:bg-white hover:text-[#DC2626] transition-colors"
-            >
-              <LogOut className="h-4 w-4" />
-            </button>
+            <div className="min-w-0">
+              <p className="truncate text-sm font-bold text-slate-900">{user?.name || "Traveler"}</p>
+              <p className="truncate text-xs font-medium text-slate-500">{user?.email || "Authenticated"}</p>
+            </div>
           </div>
+          <button
+            onClick={logout}
+            className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-bold text-slate-700 shadow-xs transition hover:bg-slate-100 hover:text-slate-900"
+          >
+            Sign out
+          </button>
         </div>
       </aside>
 
-      {/* Mobile Drawer */}
+      {/* Mobile drawer */}
       {mobileOpen && (
         <div className="fixed inset-0 z-50 lg:hidden">
-          <div
-            className="fixed inset-0 bg-[#111827]/40 backdrop-blur-xs transition-opacity"
+          <button
+            aria-label="Close navigation"
+            className="absolute inset-0 bg-slate-950/40 backdrop-blur-xs"
             onClick={() => setMobileOpen(false)}
           />
-          <aside className="fixed inset-y-0 left-0 flex w-72 flex-col bg-white shadow-2xl z-50">
-            <div className="flex h-20 items-center justify-between border-b border-[#F1F1EF] px-5">
+          <aside className="relative flex h-full w-72 flex-col border-r border-slate-200 bg-white shadow-2xl">
+            <div className="flex h-20 items-center justify-between border-b border-slate-200 px-5">
               <div className="flex items-center gap-3">
-                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#111827] text-white">
-                  <Plane className="h-5 w-5 text-indigo-400" />
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-600 text-white">
+                  ✈️
                 </div>
-                <span className="text-lg font-bold text-[#111827]">TripNest</span>
+                <p className="font-extrabold text-slate-900">TripNest</p>
               </div>
-              <button
-                onClick={() => setMobileOpen(false)}
-                className="rounded-lg p-1.5 text-[#6B7280] hover:bg-[#F1F1EF]"
-              >
-                <X className="h-5 w-5" />
+              <button onClick={() => setMobileOpen(false)} className="text-xl text-slate-500 hover:text-slate-800">
+                ✕
               </button>
             </div>
-
-            <nav className="flex-1 space-y-1 p-4">
-              {navItems.map((item) => {
-                const Icon = item.icon;
-                const active = pathname === item.href;
+            <nav className="space-y-1 p-4">
+              {displayNavItems.map((item) => {
+                const active =
+                  pathname === item.href ||
+                  (item.href !== "/dashboard" && pathname.startsWith(item.href));
                 return (
                   <Link
                     key={item.href}
                     href={item.href}
                     onClick={() => setMobileOpen(false)}
-                    className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
-                      active ? "bg-[#F1F1EF] text-[#111827] font-semibold border-l-[3px] border-[#4338CA]" : "text-[#6B7280]"
+                    className={`flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-semibold transition ${
+                      active ? "bg-indigo-50 text-indigo-700 font-bold border-l-4 border-indigo-600" : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
                     }`}
                   >
-                    <Icon className="h-4 w-4 text-[#4338CA]" />
-                    <span>{item.label}</span>
+                    <span>{item.icon}</span>
+                    {item.label}
                   </Link>
                 );
               })}
             </nav>
-
-            <div className="border-t border-[#F1F1EF] p-4">
+            <div className="mt-auto border-t border-slate-200 p-4">
               <button
                 onClick={logout}
-                className="flex w-full items-center justify-center gap-2 rounded-lg border border-[#E5E7EB] py-2 text-xs font-semibold text-[#DC2626] hover:bg-[#FEF2F2]"
+                className="w-full rounded-xl border border-slate-200 bg-slate-100 px-4 py-2.5 text-xs font-bold text-slate-700 hover:bg-slate-200"
               >
-                <LogOut className="h-4 w-4" />
-                Sign Out
+                Sign out
               </button>
             </div>
           </aside>
         </div>
       )}
 
-      {/* Main Content Area */}
-      <div className="min-h-screen lg:ml-64">
-        <header className="sticky top-0 z-30 border-b border-[#E5E7EB] bg-[#FAFAF9]/90 backdrop-blur-md">
-          <div className="mx-auto flex h-20 max-w-7xl items-center justify-between px-6 sm:px-10">
-            <div className="flex items-center gap-4">
+      {/* Main area */}
+      <div className="min-h-screen lg:ml-72">
+        <header className="sticky top-0 z-30 border-b border-slate-200/90 bg-white/90 backdrop-blur-xl shadow-xs">
+          <div className="mx-auto flex h-20 max-w-[1400px] items-center justify-between px-5 sm:px-8">
+            <div className="flex items-center gap-3">
               <button
                 onClick={() => setMobileOpen(true)}
-                className="flex h-9 w-9 items-center justify-center rounded-lg border border-[#E5E7EB] bg-white text-[#111827] shadow-xs lg:hidden"
-                aria-label="Open navigation drawer"
+                className="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-lg text-slate-700 lg:hidden hover:bg-slate-100"
+                aria-label="Open navigation"
               >
-                <Menu className="h-5 w-5" />
+                ☰
               </button>
               <div>
-                <h1 className="text-xl font-bold tracking-tight text-[#111827]">{pageTitle}</h1>
+                <h1 className="text-base font-bold text-slate-900 sm:text-lg">{pageTitle}</h1>
+                <p className="hidden text-xs font-semibold text-slate-500 sm:block">Plan better. Travel smarter.</p>
               </div>
             </div>
 
-            <div className="flex items-center gap-3">
-              <NotificationBell />
-              <Link
-                href="/trips/new"
-                className="hidden sm:inline-flex items-center justify-center rounded-lg bg-[#4338CA] px-4 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-[#3730A3]"
-              >
-                + New Trip
-              </Link>
-              <Link
-                href="/profile"
-                className="flex items-center gap-2.5 rounded-full border border-[#E5E7EB] bg-white p-1.5 pr-3 text-xs font-medium text-[#111827] hover:border-[#D1D5DB] transition"
-              >
-                <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[#111827] text-[11px] font-bold text-white">
-                  {initials}
-                </div>
-                <span className="hidden md:inline font-semibold">{user?.name || "Account"}</span>
-              </Link>
-            </div>
+            <Link
+              href="/profile"
+              className="flex items-center gap-2 rounded-full border border-slate-200/90 bg-white px-2.5 py-1.5 text-xs font-bold text-slate-800 shadow-xs transition hover:bg-slate-100 sm:px-3.5"
+            >
+              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-indigo-600 text-xs font-extrabold text-white shadow-xs">
+                {initials}
+              </span>
+              <span className="hidden sm:block">{user?.name || "Profile"}</span>
+            </Link>
           </div>
         </header>
 
-        <main className="mx-auto max-w-7xl px-6 py-8 sm:px-10 sm:py-10">{children}</main>
+        <main className="mx-auto w-full max-w-[1400px] px-5 py-7 sm:px-8 sm:py-9">{children}</main>
       </div>
     </div>
   );

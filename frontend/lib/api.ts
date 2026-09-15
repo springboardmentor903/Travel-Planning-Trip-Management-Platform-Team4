@@ -1,33 +1,38 @@
 import type {
   Activity,
+  AdminAnalyticsResponse,
+  AdminUserSummary,
+  AuthResponse,
   CategorySummary,
+  ComprehensiveAnalyticsResponse,
   CreateActivityRequest,
+  CreateDestinationRequest,
   CreateExpenseRequest,
   CreateItineraryDayRequest,
   CreateTripRequest,
   Destination,
+  DestinationAdminDTO,
+  DestinationStatsResponse,
   Expense,
+  GoogleAuthRequest,
   ItineraryDay,
-  JoinRequestResponse,
-  MembershipRole,
+  LoginRequest,
   Notification,
-  NotificationUnreadCount,
+  PageResponse,
   PlaceInfo,
+  RegisterRequest,
   RemainingBudget,
   Trip,
-  TripMemberResponse,
-  TripSearchResponse,
+  TripAdminDTO,
+  TripAdminDetailsDTO,
   UpdateActivityRequest,
   UpdateExpenseRequest,
   UpdateItineraryDayRequest,
   UpdateTripRequest,
+  UserAdminDTO,
+  UserDetailsDTO,
+  UserStatsResponse,
   WeatherInfo,
-  SmartItineraryRequest,
-  SmartItineraryResponse,
-  ItinerarySuggestionResponse,
-  ApplyItinerarySuggestionsRequest,
-  DestinationRecommendationResponse,
-  RecommendedPlace,
 } from "./types";
 
 export const API_BASE_URL =
@@ -57,19 +62,56 @@ export async function apiFetch<T>(path: string, options: RequestInit = {}): Prom
 
   if (!response.ok) {
     if (response.status === 401 && typeof window !== "undefined") {
-      localStorage.removeItem("token");
-      localStorage.removeItem("user");
-      window.location.href = "/login";
+      // Only clear the session and redirect when the 401 is a genuine token
+      // authentication failure. Check that the response body signals an auth
+      // problem (missing/invalid token) rather than some other server-side 401
+      // (e.g. a misconfigured or missing endpoint that Spring Security rejects
+      // before even reaching a controller).
+      const isAuthFailure =
+        typeof payload === "object" && payload !== null
+          ? ("error" in payload &&
+              typeof payload.error === "string" &&
+              (payload.error.toLowerCase().includes("token") ||
+                payload.error.toLowerCase().includes("authentication") ||
+                payload.error.toLowerCase().includes("unauthorized") ||
+                payload.error.toLowerCase().includes("log in"))) ||
+            ("message" in payload &&
+              typeof payload.message === "string" &&
+              (payload.message.toLowerCase().includes("token") ||
+                payload.message.toLowerCase().includes("authentication") ||
+                payload.message.toLowerCase().includes("unauthorized") ||
+                payload.message.toLowerCase().includes("log in")))
+          : typeof payload === "string" &&
+            (payload.toLowerCase().includes("token") ||
+              payload.toLowerCase().includes("authentication") ||
+              payload.toLowerCase().includes("unauthorized") ||
+              payload.toLowerCase().includes("log in"));
+
+      // No payload at all (empty body 401) → also treat as auth failure
+      const emptyBody = payload === null || payload === "" || payload === undefined;
+
+      if (isAuthFailure || emptyBody) {
+        localStorage.removeItem("token");
+        localStorage.removeItem("user");
+        if (
+          window.location.pathname !== "/login" &&
+          window.location.pathname !== "/register"
+        ) {
+          window.location.href = "/login";
+        }
+      }
     }
 
-    const message =
-      typeof payload === "object" && payload && "message" in payload
-        ? String(payload.message)
-        : typeof payload === "object" && payload && "error" in payload
-          ? String(payload.error)
-          : typeof payload === "string" && payload
-            ? payload
-            : `Request failed with status ${response.status}`;
+    let message = `Request failed with status ${response.status}`;
+    if (typeof payload === "object" && payload) {
+      if ("message" in payload && payload.message) {
+        message = String(payload.message);
+      } else if ("error" in payload && payload.error) {
+        message = String(payload.error);
+      }
+    } else if (typeof payload === "string" && payload.trim()) {
+      message = payload.trim();
+    }
 
     const error = new Error(message) as ApiError;
     error.status = response.status;
@@ -78,6 +120,30 @@ export async function apiFetch<T>(path: string, options: RequestInit = {}): Prom
 
   return payload as T;
 }
+
+/* --- Authentication APIs --- */
+
+export async function login(credentials: LoginRequest): Promise<AuthResponse> {
+  return apiFetch<AuthResponse>("/auth/login", {
+    method: "POST",
+    body: JSON.stringify(credentials),
+  });
+}
+
+export async function register(data: RegisterRequest): Promise<AuthResponse> {
+  return apiFetch<AuthResponse>("/auth/register", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function googleAuth(data: GoogleAuthRequest): Promise<AuthResponse> {
+  return apiFetch<AuthResponse>("/auth/google", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
 
 /* --- Trip Helper APIs --- */
 
@@ -113,6 +179,10 @@ export async function deleteTrip(id: number | string): Promise<void> {
 
 export async function getDestinations(): Promise<Destination[]> {
   return apiFetch<Destination[]>("/destinations");
+}
+
+export async function getPopularDestinations(): Promise<Destination[]> {
+  return apiFetch<Destination[]>("/destinations/popular");
 }
 
 export async function getDestination(id: number | string): Promise<Destination> {
@@ -247,164 +317,262 @@ export async function getRemainingBudget(
   return apiFetch<RemainingBudget>(`/trips/${tripId}/expenses/remaining-budget`);
 }
 
-/* --- Membership Helper APIs --- */
-
-export async function getTripMembers(
-  tripId: number | string
-): Promise<TripMemberResponse[]> {
-  return apiFetch<TripMemberResponse[]>(`/trips/${tripId}/members`);
-}
-
-export async function addTripMember(
-  tripId: number | string,
-  email: string
-): Promise<TripMemberResponse> {
-  return apiFetch<TripMemberResponse>(`/trips/${tripId}/members`, {
-    method: "POST",
-    body: JSON.stringify({ email }),
-  });
-}
-
-export async function changeTripMemberRole(
-  tripId: number | string,
-  userId: number | string,
-  role: MembershipRole
-): Promise<TripMemberResponse> {
-  return apiFetch<TripMemberResponse>(`/trips/${tripId}/members/${userId}/role`, {
-    method: "PATCH",
-    body: JSON.stringify({ role }),
-  });
-}
-
-export async function removeTripMember(
-  tripId: number | string,
-  userId: number | string
-): Promise<void> {
-  return apiFetch<void>(`/trips/${tripId}/members/${userId}`, {
-    method: "DELETE",
-  });
-}
-
-/* --- Join Request Helper APIs --- */
-
-export async function searchTrips(name: string): Promise<TripSearchResponse[]> {
-  return apiFetch<TripSearchResponse[]>(`/trips/search?name=${encodeURIComponent(name)}`);
-}
-
-export async function createJoinRequest(
-  tripId: number | string
-): Promise<JoinRequestResponse> {
-  return apiFetch<JoinRequestResponse>(`/trips/${tripId}/join-requests`, {
-    method: "POST",
-  });
-}
-
-export async function getPendingJoinRequests(
-  tripId: number | string
-): Promise<JoinRequestResponse[]> {
-  return apiFetch<JoinRequestResponse[]>(`/trips/${tripId}/join-requests`);
-}
-
-export async function approveJoinRequest(
-  tripId: number | string,
-  requestId: number | string
-): Promise<JoinRequestResponse> {
-  return apiFetch<JoinRequestResponse>(`/trips/${tripId}/join-requests/${requestId}/approve`, {
-    method: "PATCH",
-  });
-}
-
-export async function rejectJoinRequest(
-  tripId: number | string,
-  requestId: number | string
-): Promise<JoinRequestResponse> {
-  return apiFetch<JoinRequestResponse>(`/trips/${tripId}/join-requests/${requestId}/reject`, {
-    method: "PATCH",
-  });
-}
-
 /* --- Notification Helper APIs --- */
 
 export async function getNotifications(): Promise<Notification[]> {
   return apiFetch<Notification[]>("/notifications");
 }
 
-export async function getUnreadNotificationCount(): Promise<NotificationUnreadCount> {
-  return apiFetch<NotificationUnreadCount>("/notifications/unread-count");
+/* --- Comprehensive Admin Analytics Helper APIs --- */
+
+export async function getAdminAnalytics(params?: {
+  timeRange?: string;
+  from?: string;
+  to?: string;
+}): Promise<ComprehensiveAnalyticsResponse> {
+  const queryParams = new URLSearchParams();
+  if (params?.timeRange) queryParams.set("timeRange", params.timeRange);
+  if (params?.from) queryParams.set("from", params.from);
+  if (params?.to) queryParams.set("to", params.to);
+
+  const queryStr = queryParams.toString() ? `?${queryParams.toString()}` : "";
+  return apiFetch<ComprehensiveAnalyticsResponse>(`/admin/analytics${queryStr}`);
 }
 
-export async function markNotificationAsRead(id: number | string): Promise<Notification> {
-  return apiFetch<Notification>(`/notifications/${id}/read`, {
-    method: "PATCH",
+export async function getAdminOverviewAnalytics(params?: { timeRange?: string; from?: string; to?: string }) {
+  const queryParams = new URLSearchParams();
+  if (params?.timeRange) queryParams.set("timeRange", params.timeRange);
+  if (params?.from) queryParams.set("from", params.from);
+  if (params?.to) queryParams.set("to", params.to);
+  return apiFetch<ComprehensiveAnalyticsResponse["kpi"]>(`/admin/analytics/overview?${queryParams.toString()}`);
+}
+
+export async function getAdminUserAnalytics(params?: { timeRange?: string; from?: string; to?: string }) {
+  const queryParams = new URLSearchParams();
+  if (params?.timeRange) queryParams.set("timeRange", params.timeRange);
+  if (params?.from) queryParams.set("from", params.from);
+  if (params?.to) queryParams.set("to", params.to);
+  return apiFetch<ComprehensiveAnalyticsResponse["userAnalytics"]>(`/admin/analytics/users?${queryParams.toString()}`);
+}
+
+export async function getAdminTripAnalytics(params?: { timeRange?: string; from?: string; to?: string }) {
+  const queryParams = new URLSearchParams();
+  if (params?.timeRange) queryParams.set("timeRange", params.timeRange);
+  if (params?.from) queryParams.set("from", params.from);
+  if (params?.to) queryParams.set("to", params.to);
+  return apiFetch<ComprehensiveAnalyticsResponse["tripAnalytics"]>(`/admin/analytics/trips?${queryParams.toString()}`);
+}
+
+export async function getAdminDestinationAnalytics(params?: { timeRange?: string; from?: string; to?: string }) {
+  const queryParams = new URLSearchParams();
+  if (params?.timeRange) queryParams.set("timeRange", params.timeRange);
+  if (params?.from) queryParams.set("from", params.from);
+  if (params?.to) queryParams.set("to", params.to);
+  return apiFetch<ComprehensiveAnalyticsResponse["destinationAnalytics"]>(`/admin/analytics/destinations?${queryParams.toString()}`);
+}
+
+export async function getAdminBudgetAnalytics() {
+  return apiFetch<ComprehensiveAnalyticsResponse["budgetAnalytics"]>("/admin/analytics/budgets");
+}
+
+export async function getAdminUsers(): Promise<AdminUserSummary[]> {
+  return apiFetch<AdminUserSummary[]>("/admin/users/all-summary");
+}
+
+export async function getPaginatedAdminUsers(params: {
+  page?: number;
+  size?: number;
+  search?: string;
+  role?: string;
+  status?: string;
+  sortBy?: string;
+  sortDir?: string;
+}): Promise<PageResponse<UserAdminDTO>> {
+  const queryParams = new URLSearchParams();
+  if (params.page !== undefined) queryParams.set("page", params.page.toString());
+  if (params.size !== undefined) queryParams.set("size", params.size.toString());
+  if (params.search) queryParams.set("search", params.search);
+  if (params.role) queryParams.set("role", params.role);
+  if (params.status) queryParams.set("status", params.status);
+  if (params.sortBy) queryParams.set("sortBy", params.sortBy);
+  if (params.sortDir) queryParams.set("sortDir", params.sortDir);
+
+  const queryStr = queryParams.toString() ? `?${queryParams.toString()}` : "";
+  return apiFetch<PageResponse<UserAdminDTO>>(`/admin/users${queryStr}`);
+}
+
+export async function getAdminUserStats(): Promise<UserStatsResponse> {
+  return apiFetch<UserStatsResponse>("/admin/users/stats");
+}
+
+export async function getAdminUserDetails(userId: number | string): Promise<UserDetailsDTO> {
+  return apiFetch<UserDetailsDTO>(`/admin/users/${userId}`);
+}
+
+export async function updateAdminUser(
+  userId: number | string,
+  data: { name: string; email: string }
+): Promise<UserAdminDTO> {
+  return apiFetch<UserAdminDTO>(`/admin/users/${userId}`, {
+    method: "PUT",
+    body: JSON.stringify(data),
   });
 }
 
-export async function markAllNotificationsAsRead(): Promise<void> {
-  return apiFetch<void>("/notifications/mark-all-read", {
+export async function updateAdminUserRole(
+  userId: number | string,
+  roleName: string
+): Promise<UserAdminDTO> {
+  return apiFetch<UserAdminDTO>(`/admin/users/${userId}/role`, {
     method: "PATCH",
+    body: JSON.stringify({ roleName }),
   });
 }
 
-export async function deleteNotification(id: number | string): Promise<void> {
-  return apiFetch<void>(`/notifications/${id}`, {
+export async function updateAdminUserStatus(
+  userId: number | string,
+  active: boolean
+): Promise<UserAdminDTO> {
+  return apiFetch<UserAdminDTO>(`/admin/users/${userId}/status`, {
+    method: "PATCH",
+    body: JSON.stringify({ active }),
+  });
+}
+
+export async function deleteAdminUser(userId: number | string): Promise<{ userId: number; deleted: boolean; deactivated: boolean; message: String }> {
+  return apiFetch<{ userId: number; deleted: boolean; deactivated: boolean; message: String }>(`/admin/users/${userId}`, {
     method: "DELETE",
   });
 }
 
-export async function changePassword(currentPassword: string, newPassword: string): Promise<{ message: string }> {
-  return apiFetch<{ message: string }>("/auth/change-password", {
+export async function getAdminTrips(status?: string): Promise<Trip[]> {
+  const query = status ? `?status=${encodeURIComponent(status)}` : "";
+  return apiFetch<Trip[]>(`/admin/trips${query}`);
+}
+
+export async function getAdminExpenses(): Promise<Expense[]> {
+  return apiFetch<Expense[]>("/admin/expenses");
+}
+
+export async function getAdminNotifications(): Promise<Notification[]> {
+  return apiFetch<Notification[]>("/admin/notifications");
+}
+
+/* --- Destination Management APIs --- */
+
+export async function getPaginatedAdminDestinations(params: {
+  page?: number;
+  size?: number;
+  search?: string;
+  category?: string;
+  status?: string;
+  sortBy?: string;
+  sortDir?: string;
+}): Promise<PageResponse<DestinationAdminDTO>> {
+  const queryParams = new URLSearchParams();
+  if (params.page !== undefined) queryParams.set("page", params.page.toString());
+  if (params.size !== undefined) queryParams.set("size", params.size.toString());
+  if (params.search) queryParams.set("search", params.search);
+  if (params.category) queryParams.set("category", params.category);
+  if (params.status) queryParams.set("status", params.status);
+  if (params.sortBy) queryParams.set("sortBy", params.sortBy);
+  if (params.sortDir) queryParams.set("sortDir", params.sortDir);
+
+  const queryStr = queryParams.toString() ? `?${queryParams.toString()}` : "";
+  return apiFetch<PageResponse<DestinationAdminDTO>>(`/admin/destinations${queryStr}`);
+}
+
+export async function getAdminDestinationStats(): Promise<DestinationStatsResponse> {
+  return apiFetch<DestinationStatsResponse>("/admin/destinations/stats");
+}
+
+export async function getAdminDestinationDetails(id: number | string): Promise<DestinationAdminDTO> {
+  return apiFetch<DestinationAdminDTO>(`/admin/destinations/${id}`);
+}
+
+export async function createAdminDestination(data: CreateDestinationRequest): Promise<DestinationAdminDTO> {
+  return apiFetch<DestinationAdminDTO>("/admin/destinations", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function updateAdminDestination(
+  id: number | string,
+  data: CreateDestinationRequest
+): Promise<DestinationAdminDTO> {
+  return apiFetch<DestinationAdminDTO>(`/admin/destinations/${id}`, {
     method: "PUT",
-    body: JSON.stringify({ currentPassword, newPassword }),
+    body: JSON.stringify(data),
   });
 }
 
-export async function generateSmartItinerary(
-  tripId: number | string,
-  request?: SmartItineraryRequest
-): Promise<SmartItineraryResponse> {
-  return apiFetch<SmartItineraryResponse>(`/trips/${tripId}/smart-itinerary/generate`, {
-    method: "POST",
-    body: JSON.stringify(request || {}),
+export async function updateAdminDestinationStatus(
+  id: number | string,
+  active: boolean
+): Promise<DestinationAdminDTO> {
+  return apiFetch<DestinationAdminDTO>(`/admin/destinations/${id}/status`, {
+    method: "PATCH",
+    body: JSON.stringify({ active }),
   });
 }
 
-export async function applySmartItinerary(
-  tripId: number | string,
-  suggestions: SmartItineraryResponse
-): Promise<ItineraryDay[]> {
-  return apiFetch<ItineraryDay[]>(`/trips/${tripId}/smart-itinerary/apply`, {
-    method: "POST",
-    body: JSON.stringify(suggestions),
+export async function deleteAdminDestination(id: number | string): Promise<{ destinationId: number; deleted: boolean; deactivated: boolean; message: string }> {
+  return apiFetch<{ destinationId: number; deleted: boolean; deactivated: boolean; message: string }>(`/admin/destinations/${id}`, {
+    method: "DELETE",
   });
 }
 
-export async function getDestinationRecommendations(
-  tripId: number | string
-): Promise<DestinationRecommendationResponse> {
-  return apiFetch<DestinationRecommendationResponse>(`/trips/${tripId}/recommendations`);
+/* --- Admin Global Trip Management APIs --- */
+
+export async function getPaginatedAdminTrips(params: {
+  page?: number;
+  size?: number;
+  search?: string;
+  status?: string;
+  destination?: number | string;
+  startDate?: string;
+  endDate?: string;
+  minBudget?: number;
+  maxBudget?: number;
+  sortBy?: string;
+  sortDir?: string;
+}): Promise<PageResponse<TripAdminDTO>> {
+  const queryParams = new URLSearchParams();
+  if (params.page !== undefined) queryParams.set("page", params.page.toString());
+  if (params.size !== undefined) queryParams.set("size", params.size.toString());
+  if (params.search) queryParams.set("search", params.search);
+  if (params.status) queryParams.set("status", params.status);
+  if (params.destination) queryParams.set("destination", params.destination.toString());
+  if (params.startDate) queryParams.set("startDate", params.startDate);
+  if (params.endDate) queryParams.set("endDate", params.endDate);
+  if (params.minBudget !== undefined) queryParams.set("minBudget", params.minBudget.toString());
+  if (params.maxBudget !== undefined) queryParams.set("maxBudget", params.maxBudget.toString());
+  if (params.sortBy) queryParams.set("sortBy", params.sortBy);
+  if (params.sortDir) queryParams.set("sortDir", params.sortDir);
+
+  const queryStr = queryParams.toString() ? `?${queryParams.toString()}` : "";
+  return apiFetch<PageResponse<TripAdminDTO>>(`/admin/trips${queryStr}`);
 }
 
-export async function getItinerarySuggestions(
-  tripId: number | string,
-  request?: SmartItineraryRequest
-): Promise<ItinerarySuggestionResponse> {
-  return apiFetch<ItinerarySuggestionResponse>(`/trips/${tripId}/itinerary/suggestions`, {
-    method: "POST",
-    body: JSON.stringify(request || {}),
+export async function getAdminTripDetails(id: number | string): Promise<TripAdminDetailsDTO> {
+  return apiFetch<TripAdminDetailsDTO>(`/admin/trips/${id}`);
+}
+
+export async function updateAdminTripStatus(
+  id: number | string,
+  status: string
+): Promise<TripAdminDTO> {
+  return apiFetch<TripAdminDTO>(`/admin/trips/${id}/status`, {
+    method: "PATCH",
+    body: JSON.stringify({ status }),
   });
 }
 
-export async function applyItinerarySuggestions(
-  tripId: number | string,
-  request: ApplyItinerarySuggestionsRequest
-): Promise<ItineraryDay[]> {
-  return apiFetch<ItineraryDay[]>(`/trips/${tripId}/itinerary/apply-suggestions`, {
-    method: "POST",
-    body: JSON.stringify(request),
+export async function deleteAdminTrip(id: number | string): Promise<{ tripId: number; deleted: boolean; message: string }> {
+  return apiFetch<{ tripId: number; deleted: boolean; message: string }>(`/admin/trips/${id}`, {
+    method: "DELETE",
   });
 }
-
-
-
 
 

@@ -25,4 +25,10 @@ public class NotificationResponse {
     private boolean isRead;
 
     private LocalDateTime createdAt;
+    private String userEmail;
+
+    public NotificationResponse(Integer id, String message, String eventKey, LocalDateTime createdAt) {
+        this(id, message, eventKey, createdAt, null);
+    }
 }
+

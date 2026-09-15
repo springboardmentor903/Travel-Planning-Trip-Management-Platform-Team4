@@ -202,18 +202,32 @@ public class ItineraryService {
         Trip trip = tripRepository.findById(tripId)
                 .orElseThrow(() -> new ResourceNotFoundException("Trip not found with id: " + tripId));
 
-        if (itineraryDayRepository.existsByTripIdAndDayNumber(tripId, request.getDayNumber())) {
-            throw new IllegalArgumentException("An itinerary day with day number " + request.getDayNumber() + " already exists for this trip");
+        Integer dayNumber = request != null ? request.getDayNumber() : null;
+        if (dayNumber == null || dayNumber <= 0 || itineraryDayRepository.existsByTripIdAndDayNumber(tripId, dayNumber)) {
+            int maxDay = itineraryDayRepository.findMaxDayNumberByTripId(tripId).orElse(0);
+            dayNumber = maxDay + 1;
         }
 
-        validateDateWithinTrip(request.getDate(), trip);
+        java.time.LocalDate date = request != null ? request.getDate() : null;
+        if (date == null && trip.getStartDate() != null) {
+            date = trip.getStartDate().plusDays(dayNumber - 1);
+            if (trip.getEndDate() != null && date.isAfter(trip.getEndDate())) {
+                date = trip.getEndDate();
+            }
+        } else if (date != null) {
+            validateDateWithinTrip(date, trip);
+        }
+
+        String title = (request != null && request.getTitle() != null && !request.getTitle().isBlank())
+                ? request.getTitle()
+                : "Day " + dayNumber;
 
         ItineraryDay itineraryDay = new ItineraryDay();
         itineraryDay.setTrip(trip);
-        itineraryDay.setDayNumber(request.getDayNumber());
-        itineraryDay.setDate(request.getDate());
-        itineraryDay.setTitle(request.getTitle());
-        itineraryDay.setDescription(request.getDescription());
+        itineraryDay.setDayNumber(dayNumber);
+        itineraryDay.setDate(date);
+        itineraryDay.setTitle(title);
+        itineraryDay.setDescription(request != null ? request.getDescription() : null);
 
         ItineraryDay savedDay = itineraryDayRepository.save(itineraryDay);
         return mapToResponse(savedDay);

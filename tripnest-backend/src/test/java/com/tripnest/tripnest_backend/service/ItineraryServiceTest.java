@@ -82,14 +82,19 @@ class ItineraryServiceTest {
     }
 
     @Test
-    void testCreateItineraryDay_DuplicateDayNumber_ThrowsException() {
-        CreateItineraryDayRequest request = new CreateItineraryDayRequest(1, LocalDate.now().plusDays(2), "Day 1 Arrival", "Arrive in Paris");
+    void testCreateItineraryDay_DuplicateDayNumber_AutoIncrements() {
+        CreateItineraryDayRequest request = new CreateItineraryDayRequest(1, LocalDate.now().plusDays(2), "Day 2 Sightseeing", "Explore city");
 
         doNothing().when(tripAccessService).validateTripManagement(100, "user@example.com");
         when(tripRepository.findById(100)).thenReturn(Optional.of(trip));
         when(itineraryDayRepository.existsByTripIdAndDayNumber(100, 1)).thenReturn(true);
+        when(itineraryDayRepository.findMaxDayNumberByTripId(100)).thenReturn(Optional.of(1));
+        when(itineraryDayRepository.save(any(ItineraryDay.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-        assertThrows(IllegalArgumentException.class, () -> itineraryService.createItineraryDay(100, request, "user@example.com"));
+        ItineraryDayResponse response = itineraryService.createItineraryDay(100, request, "user@example.com");
+
+        assertNotNull(response);
+        assertEquals(2, response.getDayNumber());
     }
 
     @Test

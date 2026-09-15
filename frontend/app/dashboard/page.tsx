@@ -2,26 +2,10 @@
 
 import AppShell from "../../components/AppShell";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { getDestinations, getTrips } from "../../lib/api";
-import type { Destination, Trip, User } from "../../lib/types";
-import { motion } from "framer-motion";
-import {
-  Calendar,
-  Compass,
-  MapPin,
-  Luggage,
-  ArrowRight,
-  Sparkles,
-  Users,
-  Plus,
-  RefreshCw,
-  Heart,
-  Star,
-  CheckCircle2,
-  Clock,
-  Wallet,
-} from "lucide-react";
+import type { Destination, Trip, TripStatus, User } from "../../lib/types";
+import TripStatusBadge from "../../components/trips/TripStatusBadge";
 
 export default function DashboardPage() {
   const [user, setUser] = useState<User | null>(null);
@@ -29,21 +13,28 @@ export default function DashboardPage() {
   const [trips, setTrips] = useState<Trip[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [favorites, setFavorites] = useState<number[]>([]);
 
   const loadDashboard = async () => {
     setLoading(true);
     setError("");
     try {
-      const stored = localStorage.getItem("user");
-      if (stored) setUser(JSON.parse(stored));
+      if (typeof window !== "undefined") {
+        const stored = localStorage.getItem("user");
+        if (stored) {
+          try {
+            setUser(JSON.parse(stored));
+          } catch {
+            setUser(null);
+          }
+        }
+      }
 
       const [destinationData, tripData] = await Promise.all([
         getDestinations(),
         getTrips(),
       ]);
-      setDestinations(destinationData);
-      setTrips(tripData);
+      setDestinations(destinationData || []);
+      setTrips(tripData || []);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unable to load dashboard data.");
     } finally {
@@ -55,331 +46,359 @@ export default function DashboardPage() {
     loadDashboard();
   }, []);
 
-  const completedTrips = trips.filter((trip) => new Date(trip.endDate) < new Date()).length;
-  const upcomingTrips = trips.filter((trip) => new Date(trip.endDate) >= new Date()).length;
-  const countries = new Set(trips.map((trip) => trip.destination?.country).filter(Boolean)).size;
-
-  const featuredTrip = trips.length > 0 ? trips[0] : null;
-
-  // Greeting based on time
-  const hour = new Date().getHours();
-  const greeting = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
-
-  // Formatted current date
-  const currentDate = new Date().toLocaleDateString(undefined, {
-    weekday: "short",
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  });
-
-  const toggleFavorite = (id: number, e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setFavorites((prev) => (prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]));
+  const resolveStatus = (trip: Trip): TripStatus => {
+    if (trip.status === "ACTIVE" || trip.status === "PLANNED" || trip.status === "COMPLETED") {
+      return trip.status;
+    }
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const start = new Date(`${trip.startDate}T00:00:00`);
+    const end = new Date(`${trip.endDate}T00:00:00`);
+    if (end < today) return "COMPLETED";
+    if (start <= today && end >= today) return "ACTIVE";
+    return "PLANNED";
   };
+
+  const totalTrips = trips.length;
+  const plannedTrips = useMemo(() => trips.filter((t) => resolveStatus(t) === "PLANNED").length, [trips]);
+  const activeTrips = useMemo(() => trips.filter((t) => resolveStatus(t) === "ACTIVE").length, [trips]);
+  const completedTrips = useMemo(() => trips.filter((t) => resolveStatus(t) === "COMPLETED").length, [trips]);
 
   return (
     <AppShell>
-      {/* GREETING & HEADER */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8">
-        <div>
-          <div className="inline-flex items-center gap-2 rounded-full border border-[#E5E7EB] bg-white px-3 py-1 text-xs font-semibold text-[#6B7280] shadow-2xs mb-2">
-            <Calendar className="h-3.5 w-3.5 text-[#4338CA]" />
-            <span>{currentDate}</span>
+      {/* Welcome Hero Banner */}
+      <div className="relative mb-8 overflow-hidden rounded-3xl bg-gradient-to-r from-indigo-900 via-indigo-800 to-purple-900 p-6 sm:p-10 text-white shadow-xl shadow-indigo-950/10">
+        <div className="absolute right-0 top-0 -mt-10 -mr-10 h-72 w-72 rounded-full bg-indigo-500/10 blur-3xl" />
+        <div className="absolute bottom-0 right-1/3 -mb-10 h-48 w-48 rounded-full bg-purple-500/10 blur-2xl" />
+
+        <div className="relative z-10 flex flex-col justify-between gap-6 md:flex-row md:items-center">
+          <div>
+            <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3.5 py-1 text-xs font-bold uppercase tracking-wider text-indigo-200 backdrop-blur-md border border-white/10">
+              <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+              Travel Workspace Overview
+            </div>
+            <h1 className="mt-3 text-3xl font-black tracking-tight sm:text-4xl text-white">
+              {user?.name ? `Welcome back, ${user.name}!` : "Welcome back!"}
+            </h1>
+            <p className="mt-2 max-w-xl text-sm font-medium text-indigo-100/80 leading-relaxed">
+              Track your itineraries, explore world destinations, monitor budget allocations, and stay on top of upcoming travel departures.
+            </p>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-[#111827]">
-            {user?.name ? `${greeting}, ${user.name.split(" ")[0]} 👋` : `${greeting} 👋`}
-          </h1>
-          <p className="mt-1 text-sm text-[#6B7280]">Where would you like to explore next?</p>
-        </div>
 
-        <div className="flex items-center gap-3">
-          <button
-            onClick={loadDashboard}
-            className="inline-flex items-center gap-2 rounded-xl border border-[#E5E7EB] bg-white px-3.5 py-2.5 text-xs font-semibold text-[#111827] shadow-2xs hover:bg-[#F1F1EF] transition"
-          >
-            <RefreshCw className={`h-3.5 w-3.5 text-[#6B7280] ${loading ? "animate-spin" : ""}`} />
-            <span>Refresh</span>
-          </button>
-
-          <Link
-            href="/trips/new"
-            className="inline-flex items-center gap-2 rounded-xl bg-[#4338CA] px-4 py-2.5 text-xs font-semibold text-white shadow-xs hover:bg-[#3730A3] transition"
-          >
-            <Plus className="h-4 w-4" />
-            <span>Plan a trip</span>
-          </Link>
+          <div className="flex flex-wrap items-center gap-3">
+            <Link
+              href="/trips/new"
+              className="inline-flex items-center gap-2 rounded-xl bg-white px-5 py-3 text-sm font-extrabold text-indigo-900 shadow-lg shadow-indigo-950/20 transition hover:bg-indigo-50 active:scale-95"
+            >
+              <span>+</span> Plan a New Trip
+            </Link>
+            <button
+              onClick={loadDashboard}
+              disabled={loading}
+              className="inline-flex items-center gap-2 rounded-xl bg-white/10 px-4 py-3 text-sm font-bold text-white border border-white/15 backdrop-blur-md transition hover:bg-white/20 active:scale-95 disabled:opacity-50"
+            >
+              <svg className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+              {loading ? "Refreshing..." : "Refresh Data"}
+            </button>
+          </div>
         </div>
       </div>
 
       {error && (
-        <div className="mb-8 rounded-2xl border border-rose-200 bg-rose-50/70 p-4 text-xs font-semibold text-rose-700 flex items-center justify-between">
-          <span>{error}</span>
-          <button onClick={loadDashboard} className="underline text-rose-800">Retry</button>
+        <div className="mb-8 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-bold text-red-800">
+          ⚠️ {error}
         </div>
       )}
 
-      {/* FEATURED TRIP BANNER */}
-      {featuredTrip ? (
-        <section className="mb-10">
-          <div className="relative overflow-hidden rounded-3xl border border-[#E5E7EB] bg-[#111827] text-white shadow-lg group">
-            <div className="absolute inset-0">
-              <img
-                src={
-                  featuredTrip.destination?.imageUrl ||
-                  "https://images.unsplash.com/photo-1502602898657-3e91760cbb34?auto=format&fit=crop&w=1200&q=80"
-                }
-                alt={featuredTrip.title}
-                className="h-full w-full object-cover opacity-55 transition-transform duration-700 group-hover:scale-105"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-[#111827] via-[#111827]/40 to-transparent" />
-            </div>
-
-            <div className="relative p-7 sm:p-10 flex flex-col justify-end min-h-[300px]">
-              <div className="flex flex-wrap items-center gap-2 mb-3">
-                <span className="rounded-full bg-white/20 px-3 py-1 text-xs font-semibold text-white backdrop-blur-md">
-                  Featured Journey
-                </span>
-                <span className="rounded-full bg-emerald-500/80 px-3 py-1 text-xs font-semibold text-white backdrop-blur-md">
-                  Upcoming
-                </span>
-              </div>
-
-              <h2 className="text-2xl sm:text-4xl font-extrabold tracking-tight">{featuredTrip.title}</h2>
-              <p className="mt-2 text-sm text-white/80 flex items-center gap-2">
-                <MapPin className="h-4 w-4 text-indigo-400" />
-                <span>{featuredTrip.destination?.name || "Destination"}, {featuredTrip.destination?.country}</span>
-              </p>
-
-              <div className="mt-6 flex flex-wrap items-center justify-between gap-4 border-t border-white/15 pt-6">
-                <div className="flex flex-wrap items-center gap-6 text-xs text-white/90">
-                  <div className="flex items-center gap-2">
-                    <Calendar className="h-4 w-4 text-indigo-300" />
-                    <span>{formatDate(featuredTrip.startDate)} – {formatDate(featuredTrip.endDate)}</span>
-                  </div>
-                  {featuredTrip.budget && (
-                    <div className="flex items-center gap-2">
-                      <Wallet className="h-4 w-4 text-emerald-400" />
-                      <span>₹{featuredTrip.budget.toLocaleString("en-IN")}</span>
-                    </div>
-                  )}
-                </div>
-
-                <Link
-                  href={`/trips/${featuredTrip.id}`}
-                  className="inline-flex items-center gap-2 rounded-xl bg-white px-5 py-2.5 text-xs font-bold text-[#111827] shadow-sm hover:bg-slate-100 transition"
-                >
-                  <span>View Trip Details</span>
-                  <ArrowRight className="h-4 w-4 text-[#4338CA]" />
-                </Link>
-              </div>
-            </div>
-          </div>
-        </section>
-      ) : (
-        <section className="mb-10 rounded-3xl border border-[#E5E7EB] bg-white p-8 text-center shadow-xs">
-          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-indigo-50 text-[#4338CA]">
-            <Compass className="h-6 w-6" />
-          </div>
-          <h3 className="mt-4 text-lg font-bold text-[#111827]">No active trips found</h3>
-          <p className="mt-1 text-xs text-[#6B7280]">Start planning your next travel adventure today.</p>
-          <Link
-            href="/trips/new"
-            className="mt-5 inline-flex items-center gap-2 rounded-xl bg-[#4338CA] px-5 py-2.5 text-xs font-semibold text-white shadow-xs hover:bg-[#3730A3]"
-          >
-            <Plus className="h-4 w-4" />
-            <span>Create First Trip</span>
-          </Link>
-        </section>
-      )}
-
-      {/* QUICK STATS CARDS */}
-      <div className="grid gap-4 sm:grid-cols-3 mb-10">
-        <div className="rounded-2xl border border-[#E5E7EB] bg-white p-5 shadow-2xs">
-          <div className="flex items-center justify-between">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-50 text-[#4338CA]">
-              <Luggage className="h-5 w-5" />
-            </div>
-            <span className="text-2xl font-extrabold text-[#111827]">{loading ? "…" : trips.length}</span>
-          </div>
-          <p className="mt-4 text-xs font-semibold text-[#6B7280]">Total Trips Planned</p>
-        </div>
-
-        <div className="rounded-2xl border border-[#E5E7EB] bg-white p-5 shadow-2xs">
-          <div className="flex items-center justify-between">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600">
-              <CheckCircle2 className="h-5 w-5" />
-            </div>
-            <span className="text-2xl font-extrabold text-[#111827]">{loading ? "…" : completedTrips}</span>
-          </div>
-          <p className="mt-4 text-xs font-semibold text-[#6B7280]">Completed Journeys</p>
-        </div>
-
-        <div className="rounded-2xl border border-[#E5E7EB] bg-white p-5 shadow-2xs">
-          <div className="flex items-center justify-between">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-50 text-amber-600">
-              <Compass className="h-5 w-5" />
-            </div>
-            <span className="text-2xl font-extrabold text-[#111827]">{loading ? "…" : countries}</span>
-          </div>
-          <p className="mt-4 text-xs font-semibold text-[#6B7280]">Countries Explored</p>
-        </div>
+      {/* Interactive Summary Stats Section - Clickable Cards */}
+      <div className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <StatCard
+          title="Total Trips"
+          value={loading ? "…" : String(totalTrips)}
+          icon="🧳"
+          subtext="All recorded journeys"
+          color="indigo"
+          href="/trips"
+        />
+        <StatCard
+          title="Active Journeys"
+          value={loading ? "…" : String(activeTrips)}
+          icon="✈️"
+          subtext="Currently traveling"
+          color="emerald"
+          highlight={activeTrips > 0}
+          href="/trips?status=ACTIVE"
+        />
+        <StatCard
+          title="Upcoming Planned"
+          value={loading ? "…" : String(plannedTrips)}
+          icon="📅"
+          subtext="Upcoming departures"
+          color="purple"
+          href="/trips?status=PLANNED"
+        />
+        <StatCard
+          title="Completed Trips"
+          value={loading ? "…" : String(completedTrips)}
+          icon="🏁"
+          subtext="Past travel memories"
+          color="teal"
+          href="/trips?status=COMPLETED"
+        />
       </div>
 
-      {/* MAIN LAYOUT: RECENT TRIPS & DESTINATIONS */}
-      <div className="grid gap-8 xl:grid-cols-12">
-        {/* RECENT TRIPS CARDS (8 Cols) */}
-        <div className="xl:col-span-8 space-y-5">
-          <div className="flex items-center justify-between">
+      {/* Main Grid: Destinations Showcase & Recent Trips */}
+      <div className="grid gap-8 xl:grid-cols-[1.35fr_0.65fr]">
+        {/* Curated Destinations */}
+        <div className="rounded-3xl border border-slate-200/80 bg-white p-6 shadow-sm sm:p-8">
+          <div className="mb-6 flex items-center justify-between border-b border-slate-100 pb-5">
             <div>
-              <h2 className="text-lg font-extrabold text-[#111827]">Recent Trips</h2>
-              <p className="text-xs text-[#6B7280]">Your upcoming and past itineraries</p>
+              <div className="flex items-center gap-2">
+                <h2 className="text-xl font-black text-slate-900">Featured Destinations</h2>
+                <span className="rounded-full bg-indigo-50 px-3 py-0.5 text-xs font-bold text-indigo-700">
+                  {destinations.length} Places
+                </span>
+              </div>
+              <p className="mt-1 text-xs text-slate-500">Explore handpicked world locations for your next trip.</p>
             </div>
-            <Link href="/trips" className="text-xs font-semibold text-[#4338CA] hover:underline flex items-center gap-1">
-              View all trips <ArrowRight className="h-3.5 w-3.5" />
+            <Link
+              href="/destinations"
+              className="inline-flex items-center gap-1 text-xs font-extrabold text-indigo-600 hover:text-indigo-800 transition"
+            >
+              Browse All Catalog <span>→</span>
             </Link>
           </div>
 
           {loading ? (
-            <LoadingSkeleton />
-          ) : trips.length === 0 ? (
-            <EmptyTripsState />
-          ) : (
-            <div className="grid gap-4 sm:grid-cols-2">
-              {trips.slice(0, 4).map((trip) => {
-                const isPast = new Date(trip.endDate) < new Date();
-                return (
-                  <Link
-                    key={trip.id}
-                    href={`/trips/${trip.id}`}
-                    className="group relative overflow-hidden rounded-2xl border border-[#E5E7EB] bg-white p-4 shadow-2xs hover:shadow-md hover:border-[#D1D5DB] transition duration-200"
-                  >
-                    <div className="relative h-36 w-full overflow-hidden rounded-xl bg-slate-100 mb-3">
-                      <img
-                        src={
-                          trip.destination?.imageUrl ||
-                          "https://images.unsplash.com/photo-1488646953014-85cb44e25828?auto=format&fit=crop&w=600&q=80"
-                        }
-                        alt={trip.title}
-                        className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-                      />
-                      <span className={`absolute top-2.5 right-2.5 rounded-full px-2.5 py-0.5 text-[10px] font-bold text-white backdrop-blur-xs ${
-                        isPast ? "bg-slate-800/80" : "bg-emerald-600/90"
-                      }`}>
-                        {isPast ? "Completed" : "Upcoming"}
-                      </span>
-                    </div>
-
-                    <h3 className="font-bold text-[#111827] group-hover:text-[#4338CA] transition">{trip.title}</h3>
-                    <p className="mt-0.5 text-xs text-[#6B7280] flex items-center gap-1">
-                      <MapPin className="h-3 w-3" /> {trip.destination?.name || "Destination"}
-                    </p>
-
-                    <div className="mt-3 flex items-center justify-between border-t border-[#F1F1EF] pt-3 text-xs text-[#6B7280]">
-                      <span className="flex items-center gap-1">
-                        <Clock className="h-3 w-3" /> {formatDate(trip.startDate)}
-                      </span>
-                      {trip.budget && (
-                        <span className="font-semibold text-[#111827]">
-                          ₹{trip.budget.toLocaleString("en-IN")}
-                        </span>
-                      )}
-                    </div>
-                  </Link>
-                );
-              })}
-            </div>
-          )}
-        </div>
-
-        {/* EXPLORE DESTINATIONS SIDEBAR (4 Cols) */}
-        <div className="xl:col-span-4 space-y-5">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-lg font-extrabold text-[#111827]">Explore Spots</h2>
-              <p className="text-xs text-[#6B7280]">Popular destination picks</p>
-            </div>
-            <Link href="/destinations" className="text-xs font-semibold text-[#4338CA] hover:underline">
-              Browse
-            </Link>
-          </div>
-
-          {loading ? (
-            <LoadingSkeleton />
+            <SkeletonDestinations />
           ) : destinations.length === 0 ? (
-            <div className="rounded-2xl border border-dashed border-[#E5E7EB] bg-white p-6 text-center text-xs text-[#6B7280]">
-              No destinations loaded yet.
+            <div className="rounded-2xl border border-dashed border-slate-300 p-8 text-center text-xs font-semibold text-slate-500">
+              No destinations available.
             </div>
           ) : (
-            <div className="space-y-3">
-              {destinations.slice(0, 4).map((dest) => (
+            <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+              {destinations.slice(0, 6).map((dest) => (
                 <Link
                   key={dest.id}
                   href={`/destinations/${dest.id}`}
-                  className="group flex items-center gap-3 rounded-xl border border-[#E5E7EB] bg-white p-3 shadow-2xs hover:border-[#D1D5DB] transition"
+                  className="group relative flex flex-col justify-between overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm transition duration-300 hover:-translate-y-1 hover:border-indigo-300 hover:shadow-lg"
                 >
-                  <div className="h-14 w-14 shrink-0 overflow-hidden rounded-lg bg-slate-100">
-                    <img
-                      src={dest.imageUrl || "https://images.unsplash.com/photo-1502602898657-3e91760cbb34?auto=format&fit=crop&w=300&q=80"}
-                      alt={dest.name}
-                      className="h-full w-full object-cover transition group-hover:scale-105"
-                    />
+                  <div className="relative h-32 w-full overflow-hidden bg-slate-900">
+                    {dest.imageUrl ? (
+                      <img
+                        src={dest.imageUrl}
+                        alt={dest.name}
+                        className="h-full w-full object-cover opacity-90 transition-transform duration-500 group-hover:scale-105"
+                      />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-indigo-600 to-purple-700 text-4xl">
+                        🌍
+                      </div>
+                    )}
+                    {dest.category && (
+                      <span className="absolute top-2.5 left-2.5 rounded-full bg-white/90 backdrop-blur-md px-2.5 py-0.5 text-[10px] font-extrabold text-indigo-700 shadow-sm">
+                        {dest.category}
+                      </span>
+                    )}
                   </div>
-                  <div className="min-w-0 flex-1">
-                    <h4 className="truncate text-xs font-bold text-[#111827] group-hover:text-[#4338CA] transition">{dest.name}</h4>
-                    <p className="truncate text-[11px] text-[#6B7280]">{dest.country || dest.city || "Explore"}</p>
+                  <div className="p-4">
+                    <h3 className="line-clamp-1 font-black text-slate-900 group-hover:text-indigo-600 transition-colors">
+                      {dest.name}
+                    </h3>
+                    <p className="mt-1 flex items-center gap-1 text-[11px] font-bold text-indigo-600">
+                      <span>📍</span>
+                      <span className="truncate">{dest.city || dest.country || "Global Location"}</span>
+                    </p>
+                    <p className="mt-2 line-clamp-2 text-xs leading-relaxed text-slate-500">
+                      {dest.description || "Discover points of interest and live weather forecast."}
+                    </p>
                   </div>
-                  <button
-                    onClick={(e) => toggleFavorite(dest.id, e)}
-                    className="p-1 text-[#9CA3AF] hover:text-rose-500 transition"
-                  >
-                    <Heart className={`h-4 w-4 ${favorites.includes(dest.id) ? "fill-rose-500 text-rose-500" : ""}`} />
-                  </button>
+                  <div className="border-t border-slate-100 bg-slate-50/50 px-4 py-2.5 text-right">
+                    <span className="text-[11px] font-extrabold text-indigo-600 group-hover:translate-x-0.5 transition-transform inline-block">
+                      View Details →
+                    </span>
+                  </div>
                 </Link>
               ))}
             </div>
           )}
+        </div>
+
+        {/* Recent Trips Feed */}
+        <div className="flex flex-col justify-between rounded-3xl border border-slate-200/80 bg-white p-6 shadow-sm sm:p-8">
+          <div>
+            <div className="mb-6 flex items-center justify-between border-b border-slate-100 pb-5">
+              <div>
+                <h2 className="text-xl font-black text-slate-900">Recent Trips</h2>
+                <p className="mt-1 text-xs text-slate-500">Your latest created itineraries.</p>
+              </div>
+              <Link href="/trips" className="text-xs font-extrabold text-indigo-600 hover:text-indigo-800 transition">
+                View All →
+              </Link>
+            </div>
+
+            {loading ? (
+              <SkeletonTrips />
+            ) : trips.length === 0 ? (
+              <div className="rounded-2xl border border-dashed border-slate-300 p-8 text-center">
+                <span className="text-3xl">🧳</span>
+                <p className="mt-2 text-xs font-bold text-slate-700">No trips planned yet</p>
+                <p className="mt-1 text-xs text-slate-400">Start organizing your next getaway now.</p>
+                <Link
+                  href="/trips/new"
+                  className="mt-4 inline-block rounded-xl bg-indigo-600 px-4 py-2 text-xs font-bold text-white shadow-md hover:bg-indigo-700"
+                >
+                  + Plan Trip
+                </Link>
+              </div>
+            ) : (
+              <div className="space-y-3.5">
+                {trips.slice(0, 4).map((trip) => (
+                  <Link
+                    key={trip.id}
+                    href={`/trips/${trip.id}`}
+                    className="group block rounded-2xl border border-slate-200/80 bg-slate-50/50 p-4 transition duration-200 hover:border-indigo-300 hover:bg-white hover:shadow-md"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="font-black text-slate-900 truncate group-hover:text-indigo-600 transition-colors">
+                          {trip.title}
+                        </p>
+                        <p className="mt-0.5 text-xs font-bold text-indigo-600 flex items-center gap-1">
+                          <span>📍</span>
+                          <span className="truncate">{trip.destination?.name || "Custom Destination"}</span>
+                        </p>
+                      </div>
+                      <TripStatusBadge
+                        status={trip.status}
+                        startDate={trip.startDate}
+                        endDate={trip.endDate}
+                      />
+                    </div>
+                    <div className="mt-3 flex items-center justify-between border-t border-slate-200/60 pt-2.5 text-[11px] font-semibold text-slate-500">
+                      <span>📅 {formatDate(trip.startDate)} – {formatDate(trip.endDate)}</span>
+                      {trip.budget && <span className="font-extrabold text-indigo-700">{formatBudget(Number(trip.budget))}</span>}
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Quick Tip Footer Box */}
+          <div className="mt-6 rounded-2xl bg-gradient-to-br from-indigo-50 to-purple-50 p-4 border border-indigo-100">
+            <div className="flex items-center gap-3">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-indigo-600 text-white text-lg">
+                💡
+              </div>
+              <div>
+                <p className="text-xs font-black text-indigo-950">Trip Planning Tip</p>
+                <p className="text-[11px] text-indigo-800/80 leading-relaxed">
+                  Add custom notes and daily budget targets to keep your travel spending on track.
+                </p>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </AppShell>
   );
 }
 
-function LoadingSkeleton() {
+function StatCard({
+  title,
+  value,
+  icon,
+  subtext,
+  color,
+  highlight = false,
+  href,
+}: {
+  title: string;
+  value: string;
+  icon: string;
+  subtext: string;
+  color: "indigo" | "emerald" | "purple" | "teal";
+  highlight?: boolean;
+  href: string;
+}) {
+  const colorMap = {
+    indigo: "bg-indigo-50 text-indigo-700 border-indigo-100",
+    emerald: "bg-emerald-50 text-emerald-700 border-emerald-100",
+    purple: "bg-purple-50 text-purple-700 border-purple-100",
+    teal: "bg-teal-50 text-teal-700 border-teal-100",
+  };
+
   return (
-    <div className="grid gap-4 sm:grid-cols-2">
-      {[1, 2].map((i) => (
-        <div key={i} className="animate-pulse rounded-2xl border border-[#E5E7EB] bg-white p-4">
-          <div className="h-32 w-full rounded-xl bg-slate-200 mb-3" />
-          <div className="h-4 w-2/3 rounded bg-slate-200 mb-2" />
-          <div className="h-3 w-1/3 rounded bg-slate-100" />
+    <Link
+      href={href}
+      className={`group relative block overflow-hidden rounded-3xl border bg-white p-5 shadow-sm transition duration-300 hover:-translate-y-1 hover:border-indigo-300 hover:shadow-xl ${
+        highlight ? "ring-2 ring-emerald-500/20 border-emerald-200" : "border-slate-200/80"
+      }`}
+    >
+      <div className="flex items-center justify-between">
+        <div className={`flex h-12 w-12 items-center justify-center rounded-2xl text-2xl border transition-transform duration-300 group-hover:scale-110 ${colorMap[color]}`}>
+          {icon}
+        </div>
+        <strong className="text-3xl font-black text-slate-900 tracking-tight">{value}</strong>
+      </div>
+      <div className="mt-4 flex items-center justify-between border-t border-slate-100 pt-3">
+        <div>
+          <p className="text-xs font-bold uppercase tracking-wider text-slate-500 group-hover:text-indigo-600 transition-colors">
+            {title}
+          </p>
+          <p className="mt-0.5 text-[11px] text-slate-400">{subtext}</p>
+        </div>
+        <span className="text-xs font-extrabold text-indigo-600 opacity-70 transition-all duration-300 group-hover:opacity-100 group-hover:translate-x-1">
+          View →
+        </span>
+      </div>
+    </Link>
+  );
+}
+
+function SkeletonDestinations() {
+  return (
+    <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+      {[1, 2, 3].map((i) => (
+        <div key={i} className="animate-pulse rounded-2xl border border-slate-200 p-3">
+          <div className="h-28 rounded-xl bg-slate-200" />
+          <div className="mt-3 h-5 w-3/4 rounded-lg bg-slate-200" />
+          <div className="mt-2 h-3 w-1/2 rounded-lg bg-slate-100" />
         </div>
       ))}
     </div>
   );
 }
 
-function EmptyTripsState() {
+function SkeletonTrips() {
   return (
-    <div className="rounded-2xl border border-dashed border-[#E5E7EB] bg-white p-8 text-center">
-      <p className="text-xs font-semibold text-[#6B7280]">No trips created yet.</p>
-      <Link
-        href="/trips/new"
-        className="mt-3 inline-flex items-center gap-1.5 text-xs font-bold text-[#4338CA] hover:underline"
-      >
-        <span>Plan your first trip</span>
-        <ArrowRight className="h-3.5 w-3.5" />
-      </Link>
+    <div className="space-y-3">
+      {[1, 2, 3].map((i) => (
+        <div key={i} className="animate-pulse rounded-2xl border border-slate-200 p-4">
+          <div className="h-5 w-3/4 rounded-lg bg-slate-200" />
+          <div className="mt-2 h-3 w-1/2 rounded-lg bg-slate-100" />
+        </div>
+      ))}
     </div>
   );
 }
 
 function formatDate(value: string) {
   if (!value) return "";
-  try {
-    return new Date(`${value}T00:00:00`).toLocaleDateString(undefined, { day: "2-digit", month: "short" });
-  } catch {
-    return value;
-  }
+  return new Date(`${value}T00:00:00`).toLocaleDateString(undefined, {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
+}
+
+function formatBudget(value: number) {
+  return new Intl.NumberFormat("en-IN", {
+    style: "currency",
+    currency: "INR",
+    maximumFractionDigits: 0,
+  }).format(value);
 }
