@@ -33,14 +33,18 @@ public class Notification {
     private String message;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private NotificationType type;
+    @Column(name = "type")
+    private NotificationType type = NotificationType.TRIP_UPDATED;
 
     @Column(name = "related_trip_id")
     private Integer relatedTripId;
 
-    @Column(name = "is_read", nullable = false)
+    @Column(name = "is_read")
     private boolean isRead = false;
+
+    public NotificationType getType() {
+        return type != null ? type : NotificationType.TRIP_UPDATED;
+    }
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
@@ -48,5 +52,13 @@ public class Notification {
     @PrePersist
     protected void onCreate() {
         this.createdAt = LocalDateTime.now();
+    }
+
+    public User getUser() {
+        return recipient;
+    }
+
+    public String getEventKey() {
+        return type != null ? type.name() : "EVENT";
     }
 }

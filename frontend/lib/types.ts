@@ -20,7 +20,6 @@ export type GoogleAuthRequest = {
   token: string;
 };
 
-
 export type AuthResponse = {
   id: number;
   name: string;
@@ -71,6 +70,16 @@ export type CreateTripRequest = {
 
 export type UpdateTripRequest = CreateTripRequest;
 
+export type Activity = {
+  id: number;
+  itineraryDayId: number;
+  name: string;
+  description: string | null;
+  location: string | null;
+  startTime: string | null;
+  endTime: string | null;
+};
+
 export type ItineraryDay = {
   id: number;
   tripId: number;
@@ -78,6 +87,7 @@ export type ItineraryDay = {
   date: string | null;
   title: string;
   description: string | null;
+  activities?: Activity[];
 };
 
 export type CreateItineraryDayRequest = {
@@ -88,16 +98,6 @@ export type CreateItineraryDayRequest = {
 };
 
 export type UpdateItineraryDayRequest = CreateItineraryDayRequest;
-
-export type Activity = {
-  id: number;
-  itineraryDayId: number;
-  name: string;
-  description: string | null;
-  location: string | null;
-  startTime: string | null;
-  endTime: string | null;
-};
 
 export type CreateActivityRequest = {
   name: string;
@@ -174,10 +174,25 @@ export type RemainingBudget = {
   remainingBudget: number;
 };
 
+export type NotificationType =
+  | "MEMBER_ADDED"
+  | "JOIN_REQUEST"
+  | "JOIN_REQUEST_APPROVED"
+  | "JOIN_REQUEST_REJECTED"
+  | "EXPENSE_ADDED"
+  | "TRIP_UPDATED"
+  | string;
+
 export type Notification = {
   id: number;
+  recipientId?: number;
   userId?: number;
+  title?: string;
   message: string;
+  type?: NotificationType;
+  relatedTripId?: number;
+  isRead?: boolean;
+  read?: boolean;
   eventKey?: string | null;
   createdAt: string;
   userEmail?: string | null;
@@ -222,6 +237,8 @@ export type AdminAnalyticsResponse = {
   platformStats: PlatformStats;
   tripsOverTime?: TripMonthlyCount[];
 };
+
+export type ComprehensiveAnalyticsResponse = any;
 
 export type TripAdminDTO = {
   id: number;
@@ -384,35 +401,98 @@ export type DestinationShareDTO = {
   percentageShare: number;
 };
 
-export type ComprehensiveAnalyticsResponse = {
-  kpi: {
-    totalUsers: number;
-    newUsersThisMonth: number;
-    activeUsers: number;
-    totalTrips: number;
-    tripsThisMonth: number;
-    totalDestinations: number;
-    activeDestinations: number;
-    averageTripBudget: number;
-  };
-  userAnalytics: UserAnalyticsDTO;
-  tripAnalytics: {
-    totalTrips: number;
-    upcomingTrips: number;
-    ongoingTrips: number;
-    completedTrips: number;
-    cancelledTrips: number;
-    tripsOverTime: { month: string; count: number }[];
-  };
-  destinationAnalytics: {
-    totalDestinations: number;
-    activeDestinations: number;
-    topDestinations: DestinationShareDTO[];
-    categoryDistribution: CategoryDistributionDTO[];
-  };
-  budgetAnalytics: BudgetAnalyticsDTO;
-  dateAnalytics: DateAnalyticsDTO;
+export type MembershipRole = "GROUP_ADMIN" | "MEMBER";
+
+export type TripMemberResponse = {
+  id?: number;
+  membershipId?: number;
+  tripId?: number;
+  userId: number;
+  name: string;
+  email: string;
+  role: MembershipRole;
+  createdAt?: string;
 };
 
+export type JoinRequestStatus = "PENDING" | "APPROVED" | "REJECTED" | "CANCELLED";
 
+export type JoinRequestResponse = {
+  requestId: number;
+  tripId: number;
+  tripTitle: string;
+  userId: number;
+  name: string;
+  email: string;
+  status: JoinRequestStatus;
+  createdAt: string;
+  reviewedAt?: string | null;
+  reviewedById?: number | null;
+  reviewedByName?: string | null;
+};
 
+export type RecommendedPlace = {
+  name: string;
+  category?: string;
+  description?: string;
+  location?: string;
+  estimatedDuration?: string;
+  recommendedTime?: string;
+  estimatedCost?: string;
+  popularity?: string;
+  imageUrl?: string;
+  latitude?: number;
+  longitude?: number;
+};
+
+export type DestinationRecommendationResponse = {
+  tripId: number;
+  destinationId: number;
+  destinationName: string;
+  country?: string;
+  city?: string;
+  recommendationsByCategory?: Record<string, RecommendedPlace[]>;
+  allRecommendations?: RecommendedPlace[];
+};
+
+export type SmartItineraryRequest = {
+  travelStyle?: string;
+  interests?: string[];
+  budgetPreference?: string;
+  pace?: string;
+  preferredStartTime?: string;
+  foodPreference?: string;
+  transportationPreference?: string;
+};
+
+export type ItinerarySuggestionResponse = {
+  tripId: number;
+  destinationName?: string;
+  country?: string;
+  city?: string;
+  startDate?: string;
+  endDate?: string;
+  totalDays?: number;
+  totalBudget?: number;
+  tripOverview?: string;
+  dailyStrategy?: any[];
+  itinerary?: any[];
+  recommendations?: RecommendedPlace[];
+  planningTips?: string[];
+  warnings?: string[];
+  budgetInsights?: any;
+};
+
+export type ApplyItinerarySuggestionsRequest = {
+  days?: any[];
+};
+
+export type TripSearchResponse = {
+  id: number;
+  title: string;
+  destinationName?: string;
+  country?: string;
+  startDate?: string;
+  endDate?: string;
+  ownerId?: number;
+  ownerName?: string;
+};

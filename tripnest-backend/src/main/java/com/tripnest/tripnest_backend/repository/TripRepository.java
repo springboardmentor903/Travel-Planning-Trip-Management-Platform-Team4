@@ -17,6 +17,8 @@ public interface TripRepository extends JpaRepository<Trip, Integer> {
 
     List<Trip> findByUserId(Integer userId);
 
+    List<Trip> findByTitleContainingIgnoreCase(String title);
+
     List<Trip> findByStartDate(LocalDate startDate);
 
     List<Trip> findByUserEmail(String email);

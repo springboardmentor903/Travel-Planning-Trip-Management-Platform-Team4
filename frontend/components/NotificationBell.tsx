@@ -200,7 +200,7 @@ export default function NotificationBell() {
     }
   };
 
-  const getNotificationIcon = (type: NotificationType | string) => {
+  const getNotificationIcon = (type?: NotificationType | string) => {
     switch (type) {
       case "JOIN_REQUEST":
       case "JOIN_REQUEST_CREATED":

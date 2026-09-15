@@ -1,8 +1,8 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import type { Trip, ItineraryDay, Activity } from "../../lib/types";
-import { Sparkles, AlertTriangle, Lightbulb, CheckCircle2, X, Info, ChevronDown, ChevronUp } from "lucide-react";
+import type { Trip, ItineraryDay } from "../../lib/types";
+import { Sparkles, AlertTriangle, Lightbulb, CheckCircle2, X, ChevronDown, ChevronUp } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 export type InsightType = "WARNING" | "SUGGESTION" | "INFO";

@@ -42,6 +42,10 @@ public class Trip {
     @Column(columnDefinition = "TEXT")
     private String notes;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status")
+    private TripStatus status = TripStatus.PLANNED;
+
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
 

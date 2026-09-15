@@ -53,13 +53,13 @@ class SecurityPrivilegeEscalationTest {
     @BeforeEach
     void setUp() {
         Role role = new Role(1, "TRAVELER");
-        owner = new User(1, "Owner", "owner@example.com", "hash", role, false, LocalDateTime.now());
-        adminMember = new User(2, "Admin Member", "admin@example.com", "hash", role, false, LocalDateTime.now());
-        regularMember = new User(3, "Regular Member", "regular@example.com", "hash", role, false, LocalDateTime.now());
-        targetUser = new User(4, "Target User", "target@example.com", "hash", role, false, LocalDateTime.now());
+        owner = new User(1, "Owner", "owner@example.com", "hash", role, false, true, LocalDateTime.now());
+        adminMember = new User(2, "Admin Member", "admin@example.com", "hash", role, false, true, LocalDateTime.now());
+        regularMember = new User(3, "Regular Member", "regular@example.com", "hash", role, false, true, LocalDateTime.now());
+        targetUser = new User(4, "Target User", "target@example.com", "hash", role, false, true, LocalDateTime.now());
 
         Destination destination = new Destination(1, "Rome", "Italy", "Rome", "Desc", "url", "City");
-        trip = new Trip(10, "Rome Vacation", owner, destination, LocalDate.now().plusDays(1), LocalDate.now().plusDays(5), 1000.0, "Notes", LocalDateTime.now());
+        trip = new Trip(10, "Rome Vacation", owner, destination, LocalDate.now().plusDays(1), LocalDate.now().plusDays(5), 1000.0, "Notes", TripStatus.PLANNED, LocalDateTime.now());
     }
 
     // 1. MEMBER attempts to promote self -> must fail (403)

@@ -39,6 +39,9 @@ class TripMembershipServiceTest {
     @Mock
     private UserRepository userRepository;
 
+    @Mock
+    private NotificationService notificationService;
+
     @InjectMocks
     private TripMembershipService tripMembershipService;
 
@@ -52,13 +55,13 @@ class TripMembershipServiceTest {
     @BeforeEach
     void setUp() {
         Role role = new Role(1, "TRAVELER");
-        owner = new User(1, "Owner", "owner@example.com", "hash", role, false, LocalDateTime.now());
-        adminMember = new User(2, "Admin Member", "admin@example.com", "hash", role, false, LocalDateTime.now());
-        regularMember = new User(3, "Regular Member", "regular@example.com", "hash", role, false, LocalDateTime.now());
-        newTargetUser = new User(4, "Target User", "target@example.com", "hash", role, false, LocalDateTime.now());
+        owner = new User(1, "Owner", "owner@example.com", "hash", role, false, true, LocalDateTime.now());
+        adminMember = new User(2, "Admin Member", "admin@example.com", "hash", role, false, true, LocalDateTime.now());
+        regularMember = new User(3, "Regular Member", "regular@example.com", "hash", role, false, true, LocalDateTime.now());
+        newTargetUser = new User(4, "Target User", "target@example.com", "hash", role, false, true, LocalDateTime.now());
 
         destination = new Destination(1, "Paris", "France", "Paris", "Desc", "url", "City");
-        trip = new Trip(10, "Summer Trip", owner, destination, LocalDate.now().plusDays(1), LocalDate.now().plusDays(5), 1000.0, "Notes", LocalDateTime.now());
+        trip = new Trip(10, "Summer Trip", owner, destination, LocalDate.now().plusDays(1), LocalDate.now().plusDays(5), 1000.0, "Notes", TripStatus.PLANNED, LocalDateTime.now());
     }
 
     // 1. Owner adds member

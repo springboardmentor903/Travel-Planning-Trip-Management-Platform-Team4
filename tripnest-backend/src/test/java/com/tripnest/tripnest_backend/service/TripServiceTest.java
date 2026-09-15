@@ -6,6 +6,7 @@ import com.tripnest.tripnest_backend.dto.UpdateTripRequest;
 import com.tripnest.tripnest_backend.entity.Destination;
 import com.tripnest.tripnest_backend.entity.Role;
 import com.tripnest.tripnest_backend.entity.Trip;
+import com.tripnest.tripnest_backend.entity.TripStatus;
 import com.tripnest.tripnest_backend.entity.User;
 import com.tripnest.tripnest_backend.exception.ResourceNotFoundException;
 import com.tripnest.tripnest_backend.repository.DestinationRepository;
@@ -42,6 +43,12 @@ class TripServiceTest {
     @Mock
     private NotificationService notificationService;
 
+    @Mock
+    private TripAccessService tripAccessService;
+
+    @Mock
+    private TripMembershipRepository tripMembershipRepository;
+
     @InjectMocks
     private TripService tripService;
 
@@ -51,7 +58,7 @@ class TripServiceTest {
     @BeforeEach
     void setUp() {
         Role role = new Role(1, "TRAVELER");
-        userA = new User(10, "User A", "usera@example.com", "hash", role, false, LocalDateTime.now());
+        userA = new User(10, "User A", "usera@example.com", "hash", role, false, true, LocalDateTime.now());
         destination = new Destination(1, "Paris", "France", "Paris", "Description", "http://example.com/paris.jpg", "City");
     }
 
@@ -69,7 +76,7 @@ class TripServiceTest {
         Trip savedTrip = new Trip(
                 100, "Paris Vacation", userA, destination,
                 request.getStartDate(), request.getEndDate(),
-                1500.0, "Sightseeing", LocalDateTime.now()
+                1500.0, "Sightseeing", TripStatus.PLANNED, LocalDateTime.now()
         );
         when(tripRepository.save(any(Trip.class))).thenReturn(savedTrip);
 
@@ -84,7 +91,7 @@ class TripServiceTest {
 
     @Test
     void testGetTripById_Success() {
-        Trip trip = new Trip(100, "Paris Trip", userA, destination, LocalDate.now().plusDays(1), LocalDate.now().plusDays(5), 1000.0, "Notes", LocalDateTime.now());
+        Trip trip = new Trip(100, "Paris Trip", userA, destination, LocalDate.now().plusDays(1), LocalDate.now().plusDays(5), 1000.0, "Notes", TripStatus.PLANNED, LocalDateTime.now());
         when(tripRepository.findByIdAndUserEmail(100, "usera@example.com")).thenReturn(Optional.of(trip));
 
         TripResponse response = tripService.getTripById(100, "usera@example.com");
@@ -104,7 +111,7 @@ class TripServiceTest {
 
     @Test
     void testUpdateTrip_Success() {
-        Trip trip = new Trip(100, "Old Title", userA, destination, LocalDate.now().plusDays(1), LocalDate.now().plusDays(5), 1000.0, "Notes", LocalDateTime.now());
+        Trip trip = new Trip(100, "Old Title", userA, destination, LocalDate.now().plusDays(1), LocalDate.now().plusDays(5), 1000.0, "Notes", TripStatus.PLANNED, LocalDateTime.now());
         UpdateTripRequest updateRequest = new UpdateTripRequest("Updated Title", 1, LocalDate.now().plusDays(2), LocalDate.now().plusDays(7), 2000.0, "Updated Notes");
 
         when(tripRepository.findByIdAndUserEmail(100, "usera@example.com")).thenReturn(Optional.of(trip));
@@ -127,7 +134,7 @@ class TripServiceTest {
 
     @Test
     void testDeleteTrip_Success() {
-        Trip trip = new Trip(100, "Trip to Delete", userA, destination, LocalDate.now().plusDays(1), LocalDate.now().plusDays(5), 1000.0, "Notes", LocalDateTime.now());
+        Trip trip = new Trip(100, "Trip to Delete", userA, destination, LocalDate.now().plusDays(1), LocalDate.now().plusDays(5), 1000.0, "Notes", TripStatus.PLANNED, LocalDateTime.now());
         when(tripRepository.findByIdAndUserEmail(100, "usera@example.com")).thenReturn(Optional.of(trip));
 
         tripService.deleteTrip(100, "usera@example.com");

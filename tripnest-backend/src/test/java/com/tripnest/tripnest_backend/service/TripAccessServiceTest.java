@@ -44,13 +44,13 @@ class TripAccessServiceTest {
     @BeforeEach
     void setUp() {
         Role role = new Role(1, "TRAVELER");
-        owner = new User(1, "Owner", "owner@example.com", "hash", role, false, LocalDateTime.now());
-        regularMemberUser = new User(2, "Member User", "member@example.com", "hash", role, false, LocalDateTime.now());
-        groupAdminUser = new User(3, "Admin User", "admin@example.com", "hash", role, false, LocalDateTime.now());
-        nonMemberUser = new User(4, "Non Member", "nonmember@example.com", "hash", role, false, LocalDateTime.now());
+        owner = new User(1, "Owner", "owner@example.com", "hash", role, false, true, LocalDateTime.now());
+        regularMemberUser = new User(2, "Member User", "member@example.com", "hash", role, false, true, LocalDateTime.now());
+        groupAdminUser = new User(3, "Admin User", "admin@example.com", "hash", role, false, true, LocalDateTime.now());
+        nonMemberUser = new User(4, "Non Member", "nonmember@example.com", "hash", role, false, true, LocalDateTime.now());
 
         Destination destination = new Destination(1, "Tokyo", "Japan", "Tokyo", "Desc", "url", "City");
-        trip = new Trip(10, "Tokyo Trip", owner, destination, LocalDate.now().plusDays(1), LocalDate.now().plusDays(5), 2000.0, "Notes", LocalDateTime.now());
+        trip = new Trip(10, "Tokyo Trip", owner, destination, LocalDate.now().plusDays(1), LocalDate.now().plusDays(5), 2000.0, "Notes", TripStatus.PLANNED, LocalDateTime.now());
     }
 
     // 1. Owner -> true

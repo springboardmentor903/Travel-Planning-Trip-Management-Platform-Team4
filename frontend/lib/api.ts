@@ -2,6 +2,7 @@ import type {
   Activity,
   AdminAnalyticsResponse,
   AdminUserSummary,
+  ApplyItinerarySuggestionsRequest,
   AuthResponse,
   CategorySummary,
   ComprehensiveAnalyticsResponse,
@@ -12,19 +13,26 @@ import type {
   CreateTripRequest,
   Destination,
   DestinationAdminDTO,
+  DestinationRecommendationResponse,
   DestinationStatsResponse,
   Expense,
   GoogleAuthRequest,
   ItineraryDay,
+  ItinerarySuggestionResponse,
+  JoinRequestResponse,
   LoginRequest,
+  MembershipRole,
   Notification,
   PageResponse,
   PlaceInfo,
   RegisterRequest,
   RemainingBudget,
+  SmartItineraryRequest,
   Trip,
   TripAdminDTO,
   TripAdminDetailsDTO,
+  TripMemberResponse,
+  TripSearchResponse,
   UpdateActivityRequest,
   UpdateExpenseRequest,
   UpdateItineraryDayRequest,
@@ -323,20 +331,34 @@ export async function getNotifications(): Promise<Notification[]> {
   return apiFetch<Notification[]>("/notifications");
 }
 
+export async function getUnreadNotificationCount(): Promise<{ unreadCount: number; count: number }> {
+  const res = await apiFetch<{ unreadCount?: number; count?: number }>("/notifications/unread-count");
+  const countVal = res?.unreadCount ?? res?.count ?? 0;
+  return { unreadCount: countVal, count: countVal };
+}
+
+export async function markNotificationAsRead(id: number | string): Promise<Notification> {
+  return apiFetch<Notification>(`/notifications/${id}/read`, {
+    method: "PATCH",
+  });
+}
+
+export async function markAllNotificationsAsRead(): Promise<void> {
+  return apiFetch<void>("/notifications/mark-all-read", {
+    method: "PATCH",
+  });
+}
+
+export async function deleteNotification(id: number | string): Promise<void> {
+  return apiFetch<void>(`/notifications/${id}`, {
+    method: "DELETE",
+  });
+}
+
 /* --- Comprehensive Admin Analytics Helper APIs --- */
 
-export async function getAdminAnalytics(params?: {
-  timeRange?: string;
-  from?: string;
-  to?: string;
-}): Promise<ComprehensiveAnalyticsResponse> {
-  const queryParams = new URLSearchParams();
-  if (params?.timeRange) queryParams.set("timeRange", params.timeRange);
-  if (params?.from) queryParams.set("from", params.from);
-  if (params?.to) queryParams.set("to", params.to);
-
-  const queryStr = queryParams.toString() ? `?${queryParams.toString()}` : "";
-  return apiFetch<ComprehensiveAnalyticsResponse>(`/admin/analytics${queryStr}`);
+export async function getAdminAnalytics(): Promise<AdminAnalyticsResponse> {
+  return apiFetch<AdminAnalyticsResponse>("/admin/analytics");
 }
 
 export async function getAdminOverviewAnalytics(params?: { timeRange?: string; from?: string; to?: string }) {
@@ -439,8 +461,8 @@ export async function updateAdminUserStatus(
   });
 }
 
-export async function deleteAdminUser(userId: number | string): Promise<{ userId: number; deleted: boolean; deactivated: boolean; message: String }> {
-  return apiFetch<{ userId: number; deleted: boolean; deactivated: boolean; message: String }>(`/admin/users/${userId}`, {
+export async function deleteAdminUser(userId: number | string): Promise<{ userId: number; deleted: boolean; deactivated: boolean; message: string }> {
+  return apiFetch<{ userId: number; deleted: boolean; deactivated: boolean; message: string }>(`/admin/users/${userId}`, {
     method: "DELETE",
   });
 }
@@ -575,4 +597,102 @@ export async function deleteAdminTrip(id: number | string): Promise<{ tripId: nu
   });
 }
 
+/* --- Trip Membership & Join Request APIs --- */
+
+export async function getTripMembers(tripId: number | string): Promise<TripMemberResponse[]> {
+  return apiFetch<TripMemberResponse[]>(`/trips/${tripId}/members`);
+}
+
+export async function addTripMember(
+  tripId: number | string,
+  email: string
+): Promise<TripMemberResponse> {
+  return apiFetch<TripMemberResponse>(`/trips/${tripId}/members`, {
+    method: "POST",
+    body: JSON.stringify({ email }),
+  });
+}
+
+export async function changeTripMemberRole(
+  tripId: number | string,
+  userId: number | string,
+  role: MembershipRole
+): Promise<TripMemberResponse> {
+  return apiFetch<TripMemberResponse>(`/trips/${tripId}/members/${userId}/role`, {
+    method: "PATCH",
+    body: JSON.stringify({ role }),
+  });
+}
+
+export async function removeTripMember(
+  tripId: number | string,
+  userId: number | string
+): Promise<void> {
+  return apiFetch<void>(`/trips/${tripId}/members/${userId}`, {
+    method: "DELETE",
+  });
+}
+
+export async function getPendingJoinRequests(
+  tripId: number | string
+): Promise<JoinRequestResponse[]> {
+  return apiFetch<JoinRequestResponse[]>(`/trips/${tripId}/join-requests`);
+}
+
+export async function approveJoinRequest(
+  tripId: number | string,
+  requestId: number | string
+): Promise<JoinRequestResponse> {
+  return apiFetch<JoinRequestResponse>(`/trips/${tripId}/join-requests/${requestId}/approve`, {
+    method: "POST",
+  });
+}
+
+export async function rejectJoinRequest(
+  tripId: number | string,
+  requestId: number | string
+): Promise<JoinRequestResponse> {
+  return apiFetch<JoinRequestResponse>(`/trips/${tripId}/join-requests/${requestId}/reject`, {
+    method: "POST",
+  });
+}
+
+export async function getDestinationRecommendations(
+  tripId: number | string
+): Promise<DestinationRecommendationResponse> {
+  return apiFetch<DestinationRecommendationResponse>(`/trips/${tripId}/recommendations`);
+}
+
+export async function getItinerarySuggestions(
+  tripId: number | string,
+  data?: SmartItineraryRequest
+): Promise<ItinerarySuggestionResponse> {
+  return apiFetch<ItinerarySuggestionResponse>(`/trips/${tripId}/itinerary/suggestions`, {
+    method: "POST",
+    body: data ? JSON.stringify(data) : undefined,
+  });
+}
+
+export async function applyItinerarySuggestions(
+  tripId: number | string,
+  data: ApplyItinerarySuggestionsRequest
+): Promise<ItineraryDay[]> {
+  return apiFetch<ItineraryDay[]>(`/trips/${tripId}/itinerary/apply-suggestions`, {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function searchTrips(name?: string): Promise<TripSearchResponse[]> {
+  const queryStr = name ? `?name=${encodeURIComponent(name)}` : "";
+  return apiFetch<TripSearchResponse[]>(`/trips/search${queryStr}`);
+}
+
+export async function createJoinRequest(
+  tripId: number | string
+): Promise<JoinRequestResponse> {
+  return apiFetch<JoinRequestResponse>(`/trips/${tripId}/join-requests`, {
+    method: "POST",
+  });
+}
 

@@ -137,7 +137,7 @@ export default function TripSearchModal({ isOpen, onClose }: TripSearchModalProp
             </div>
           ) : hasSearched && results.length === 0 ? (
             <div className="rounded-2xl border border-dashed border-slate-300 py-12 text-center">
-              <p className="text-sm font-semibold text-slate-500">No trips found matching "{query}".</p>
+              <p className="text-sm font-semibold text-slate-500">No trips found matching &quot;{query}&quot;.</p>
             </div>
           ) : (
             results.map((trip) => {
@@ -190,7 +190,7 @@ export default function TripSearchModal({ isOpen, onClose }: TripSearchModalProp
   );
 }
 
-function formatDate(value: string) {
+function formatDate(value?: string) {
   if (!value) return "";
   return new Date(`${value}T00:00:00`).toLocaleDateString(undefined, {
     day: "2-digit",

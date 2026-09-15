@@ -11,6 +11,8 @@ import org.springframework.boot.CommandLineRunner;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
+import org.springframework.jdbc.core.JdbcTemplate;
+
 import java.util.List;
 
 @Component
@@ -21,6 +23,7 @@ public class DataSeeder implements CommandLineRunner {
     private final UserRepository userRepository;
     private final DestinationRepository destinationRepository;
     private final PasswordEncoder passwordEncoder;
+    private final JdbcTemplate jdbcTemplate;
 
     private static final List<String> DEFAULT_ROLES = List.of("TRAVELER", "GROUP_ADMIN", "ADMINISTRATOR");
     private static final String DEFAULT_ADMIN_EMAIL = "admin@tripnest.com";
@@ -28,6 +31,14 @@ public class DataSeeder implements CommandLineRunner {
 
     @Override
     public void run(String... args) {
+        try {
+            jdbcTemplate.execute("ALTER TABLE notifications ADD COLUMN IF NOT EXISTS type VARCHAR(255) DEFAULT 'TRIP_UPDATED'");
+            jdbcTemplate.execute("ALTER TABLE notifications ADD COLUMN IF NOT EXISTS is_read BOOLEAN DEFAULT false");
+            jdbcTemplate.execute("UPDATE notifications SET type = 'TRIP_UPDATED' WHERE type IS NULL");
+            jdbcTemplate.execute("UPDATE notifications SET is_read = false WHERE is_read IS NULL");
+        } catch (Exception e) {
+            System.err.println("Notifications table migration check: " + e.getMessage());
+        }
         DEFAULT_ROLES.forEach(roleName -> {
             if (roleRepository.findByName(roleName).isEmpty()) {
                 Role role = new Role();

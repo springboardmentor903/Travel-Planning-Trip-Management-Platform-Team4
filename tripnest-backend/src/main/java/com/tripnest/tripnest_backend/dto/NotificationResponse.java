@@ -27,8 +27,23 @@ public class NotificationResponse {
     private LocalDateTime createdAt;
     private String userEmail;
 
-    public NotificationResponse(Integer id, String message, String eventKey, LocalDateTime createdAt) {
-        this(id, message, eventKey, createdAt, null);
+    public NotificationResponse(Long id, String message, String title, LocalDateTime createdAt, String userEmail) {
+        this.id = id;
+        this.message = message;
+        this.title = title;
+        this.createdAt = createdAt;
+        this.userEmail = userEmail;
+    }
+
+    public NotificationResponse(Long id, Integer recipientId, String title, String message, NotificationType type, Integer relatedTripId, boolean isRead, LocalDateTime createdAt) {
+        this.id = id;
+        this.recipientId = recipientId;
+        this.title = title;
+        this.message = message;
+        this.type = type;
+        this.relatedTripId = relatedTripId;
+        this.isRead = isRead;
+        this.createdAt = createdAt;
+        this.userEmail = null;
     }
 }
-

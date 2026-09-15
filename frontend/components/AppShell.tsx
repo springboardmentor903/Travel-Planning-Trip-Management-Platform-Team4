@@ -79,7 +79,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
   const displayNavItems = user?.role === "ADMINISTRATOR"
     ? [
-        { href: "/admin", label: "Admin Dashboard", icon: "📊" },
+        { href: "/admin/dashboard", label: "Admin Dashboard", icon: "📊" },
         { href: "/admin/users", label: "Users", icon: "👥" },
         { href: "/admin/destinations", label: "Destinations", icon: "🌍" },
         { href: "/admin/trips", label: "Trips", icon: "✈" },

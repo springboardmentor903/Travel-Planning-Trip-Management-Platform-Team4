@@ -37,8 +37,10 @@ public class AdminController {
 
     private final AdminService adminService;
 
-    // Analytics endpoint is handled comprehensively by AdminAnalyticsController
-
+    @GetMapping("/analytics")
+    public ResponseEntity<AdminAnalyticsResponse> getAnalytics() {
+        return ResponseEntity.ok(adminService.getAnalytics());
+    }
 
     @GetMapping("/dashboard")
     public String adminDashboard(Authentication authentication) {

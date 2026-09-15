@@ -81,7 +81,7 @@ export default function DiscoverPlacesSection({
   const openAddModal = (place: RecommendedPlace) => {
     setAddPlace(place);
     setCustomName(place.name);
-    setCustomDescription(place.description);
+    setCustomDescription(place.description || "");
     setTargetDayNumber(days.length > 0 ? days[0].dayNumber : 1);
     setStartTime("10:00");
     setEndTime("12:00");
@@ -159,7 +159,7 @@ export default function DiscoverPlacesSection({
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       const nameMatch = place.name.toLowerCase().includes(q);
-      const descMatch = place.description.toLowerCase().includes(q);
+      const descMatch = (place.description || "").toLowerCase().includes(q);
       const locMatch = (place.location || "").toLowerCase().includes(q);
       if (!nameMatch && !descMatch && !locMatch) return false;
     }

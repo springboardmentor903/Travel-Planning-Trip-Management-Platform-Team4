@@ -22,4 +22,13 @@ public class TripResponse {
     private Double budget;
     private String notes;
     private LocalDateTime createdAt;
+    private String status;
+
+    public TripResponse(Integer id, String title, Integer userId, String userEmail, DestinationResponse destination, LocalDate startDate, LocalDate endDate, Double budget, String notes, LocalDateTime createdAt) {
+        this(id, title, userId, userEmail, destination, startDate, endDate, budget, notes, createdAt, null);
+    }
+
+    public TripResponse(Integer id, String title, Integer userId, String userEmail, DestinationResponse destination, LocalDate startDate, LocalDate endDate, Double budget, String notes, LocalDateTime createdAt, Object status) {
+        this(id, title, userId, userEmail, destination, startDate, endDate, budget, notes, createdAt, status != null ? status.toString() : null);
+    }
 }

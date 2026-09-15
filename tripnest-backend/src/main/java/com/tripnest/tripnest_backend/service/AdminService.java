@@ -660,7 +660,7 @@ public class AdminService {
                 t.getEndDate(),
                 t.getBudget(),
                 t.getNotes(),
-                t.getStatus(),
+                t.getStatus() != null ? t.getStatus().name() : null,
                 computeDerivedStatus(t),
                 t.getCreatedAt()
         )).toList();
@@ -682,11 +682,16 @@ public class AdminService {
 
         User u = t.getUser();
         Destination d = t.getDestination();
-
         DestinationResponse destResponse = null;
         if (d != null) {
             destResponse = new DestinationResponse(
-                    d.getId(), d.getName(), d.getCountry(), d.getCity(), d.getDescription(), d.getImageUrl(), d.getCategory()
+                    d.getId(),
+                    d.getName(),
+                    d.getCountry(),
+                    d.getCity(),
+                    d.getDescription(),
+                    d.getImageUrl(),
+                    d.getCategory()
             );
         }
 
@@ -704,7 +709,7 @@ public class AdminService {
                 t.getEndDate(),
                 t.getBudget(),
                 t.getNotes(),
-                t.getStatus(),
+                t.getStatus() != null ? t.getStatus().name() : null,
                 computeDerivedStatus(t),
                 t.getCreatedAt()
         );
@@ -736,7 +741,7 @@ public class AdminService {
                 saved.getEndDate(),
                 saved.getBudget(),
                 saved.getNotes(),
-                saved.getStatus(),
+                saved.getStatus() != null ? saved.getStatus().name() : null,
                 computeDerivedStatus(saved),
                 saved.getCreatedAt()
         );
