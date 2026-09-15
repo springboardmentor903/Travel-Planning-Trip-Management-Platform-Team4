@@ -302,7 +302,7 @@ export default function LandingPage() {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.6 }}
-          className="rounded-3xl border border-[#E5E7EB] bg-white p-8 shadow-sm"
+          className="rounded-3xl border border-[#E5E7EB] bg-white p-8 shadow-xs"
         >
           <div className="grid grid-cols-2 gap-8 md:grid-cols-4 md:divide-x md:divide-[#E5E7EB]">
             <div className="flex flex-col items-center text-center">
@@ -344,8 +344,121 @@ export default function LandingPage() {
         </motion.div>
       </section>
 
+      {/* FEATURES SECTION */}
+      <section id="features" className="mx-auto max-w-7xl px-6 py-20 sm:px-10 scroll-mt-20">
+        <div className="text-center max-w-3xl mx-auto mb-16">
+          <span className="text-xs font-bold uppercase tracking-wider text-[#4338CA] bg-indigo-50 px-3 py-1 rounded-full">
+            Powerful Platform
+          </span>
+          <h2 className="mt-4 text-3xl sm:text-4xl font-extrabold text-[#111827]">
+            Everything You Need for Effortless Journeys
+          </h2>
+          <p className="mt-3 text-base text-[#6B7280]">
+            From AI-assisted itinerary generation to expense splits and live weather updates, TripNest empowers your travel every step of the way.
+          </p>
+        </div>
+
+        <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.4 }}
+            className="rounded-2xl border border-[#E5E7EB] bg-white p-8 shadow-xs hover:shadow-lg transition-all"
+          >
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-indigo-50 text-[#4338CA] mb-6">
+              <Sparkles className="h-6 w-6" />
+            </div>
+            <h3 className="text-xl font-bold text-[#111827]">Smart Itinerary Builder</h3>
+            <p className="mt-2 text-sm text-[#6B7280] leading-relaxed">
+              Generate personalized day-by-day travel schedules based on your travel style, pace, and destination highlights.
+            </p>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.4, delay: 0.1 }}
+            className="rounded-2xl border border-[#E5E7EB] bg-white p-8 shadow-xs hover:shadow-lg transition-all"
+          >
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 mb-6">
+              <Calendar className="h-6 w-6" />
+            </div>
+            <h3 className="text-xl font-bold text-[#111827]">Budget & Expense Tracker</h3>
+            <p className="mt-2 text-sm text-[#6B7280] leading-relaxed">
+              Track multi-category expenses (Hotels, Flights, Food, Shopping) in real time with category breakdowns and remaining budget insights.
+            </p>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.4, delay: 0.2 }}
+            className="rounded-2xl border border-[#E5E7EB] bg-white p-8 shadow-xs hover:shadow-lg transition-all"
+          >
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-amber-50 text-amber-600 mb-6">
+              <Globe className="h-6 w-6" />
+            </div>
+            <h3 className="text-xl font-bold text-[#111827]">Live Weather & Maps</h3>
+            <p className="mt-2 text-sm text-[#6B7280] leading-relaxed">
+              Stay ahead with real-time temperature, humidity, and condition forecasts integrated directly with interactive OpenStreetMap views.
+            </p>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.4, delay: 0.3 }}
+            className="rounded-2xl border border-[#E5E7EB] bg-white p-8 shadow-xs hover:shadow-lg transition-all"
+          >
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-rose-50 text-rose-500 mb-6">
+              <Compass className="h-6 w-6" />
+            </div>
+            <h3 className="text-xl font-bold text-[#111827]">Group Trip Collaboration</h3>
+            <p className="mt-2 text-sm text-[#6B7280] leading-relaxed">
+              Invite friends to your trips, assign roles, manage join requests, and coordinate itinerary activities together seamlessly.
+            </p>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.4, delay: 0.4 }}
+            className="rounded-2xl border border-[#E5E7EB] bg-white p-8 shadow-xs hover:shadow-lg transition-all"
+          >
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-sky-50 text-sky-600 mb-6">
+              <Bell className="h-6 w-6" />
+            </div>
+            <h3 className="text-xl font-bold text-[#111827]">Real-Time Notifications</h3>
+            <p className="mt-2 text-sm text-[#6B7280] leading-relaxed">
+              Never miss a departure date, itinerary update, or group invitation with instant notifications and unread badges.
+            </p>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.4, delay: 0.5 }}
+            className="rounded-2xl border border-[#E5E7EB] bg-white p-8 shadow-xs hover:shadow-lg transition-all"
+          >
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#111827] text-white mb-6">
+              <Luggage className="h-6 w-6 text-indigo-400" />
+            </div>
+            <h3 className="text-xl font-bold text-[#111827]">Curated Places & Tips</h3>
+            <p className="mt-2 text-sm text-[#6B7280] leading-relaxed">
+              Discover top tourist attractions, local culinary hotspots, historical landmarks, and practical packing guidelines for any destination.
+            </p>
+          </motion.div>
+        </div>
+      </section>
+
       {/* DESTINATION GALLERY SECTION */}
-      <section id="destinations" className="mx-auto max-w-7xl px-6 py-16 sm:px-10">
+      <section id="destinations" className="mx-auto max-w-7xl px-6 py-16 sm:px-10 scroll-mt-20">
         <div className="flex flex-col md:flex-row md:items-end justify-between mb-10">
           <div>
             <span className="text-xs font-bold uppercase tracking-wider text-[#4338CA]">Curated Collections</span>
@@ -407,6 +520,191 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* TRIP PLANNER SECTION */}
+      <section id="planner" className="mx-auto max-w-7xl px-6 py-20 sm:px-10 scroll-mt-20">
+        <div className="rounded-3xl bg-gradient-to-r from-[#111827] to-[#1E1B4B] text-white p-8 sm:p-12 shadow-xl relative overflow-hidden">
+          <div className="relative z-10 grid gap-8 lg:grid-cols-12 lg:items-center">
+            <div className="lg:col-span-7">
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3.5 py-1 text-xs font-semibold backdrop-blur-md">
+                <Sparkles className="h-3.5 w-3.5 text-indigo-400" />
+                <span>Smart Trip Planner</span>
+              </span>
+              <h2 className="mt-4 text-3xl sm:text-5xl font-extrabold tracking-tight">
+                Ready to Plan Your Next Adventure?
+              </h2>
+              <p className="mt-4 text-base text-slate-300 leading-relaxed max-w-xl">
+                Select your destination, set your travel dates, define your budget, and let TripNest organize your complete day-by-day itinerary automatically.
+              </p>
+              <div className="mt-8 flex flex-wrap gap-4">
+                <Link
+                  href="/trips/new"
+                  className="inline-flex items-center gap-2 rounded-xl bg-[#4338CA] px-6 py-3.5 text-sm font-semibold text-white shadow-md hover:bg-[#3730A3] transition"
+                >
+                  <span>Create New Trip Now</span>
+                  <ArrowRight className="h-4 w-4" />
+                </Link>
+                <Link
+                  href="/trips"
+                  className="inline-flex items-center gap-2 rounded-xl border border-white/20 bg-white/10 px-6 py-3.5 text-sm font-semibold text-white backdrop-blur-xs hover:bg-white/20 transition"
+                >
+                  <span>View Existing Trips</span>
+                </Link>
+              </div>
+            </div>
+
+            <div className="lg:col-span-5 bg-white/10 border border-white/10 rounded-2xl p-6 backdrop-blur-md">
+              <h3 className="text-lg font-bold text-white mb-4">Quick Trip Preview</h3>
+              <div className="space-y-4 text-xs">
+                <div className="rounded-xl bg-white/10 p-3 flex justify-between items-center">
+                  <span className="text-slate-300">Destination</span>
+                  <span className="font-semibold text-white">Paris, France</span>
+                </div>
+                <div className="rounded-xl bg-white/10 p-3 flex justify-between items-center">
+                  <span className="text-slate-300">Duration</span>
+                  <span className="font-semibold text-white">5 Days / 4 Nights</span>
+                </div>
+                <div className="rounded-xl bg-white/10 p-3 flex justify-between items-center">
+                  <span className="text-slate-300">Target Budget</span>
+                  <span className="font-semibold text-white">$1,500.00</span>
+                </div>
+                <div className="rounded-xl bg-white/10 p-3 flex justify-between items-center">
+                  <span className="text-slate-300">Itinerary Days</span>
+                  <span className="font-semibold text-emerald-400">100% Generated</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* EXPLORE SECTION */}
+      <section id="explore" className="mx-auto max-w-7xl px-6 py-20 sm:px-10 scroll-mt-20">
+        <div className="text-center max-w-3xl mx-auto mb-16">
+          <span className="text-xs font-bold uppercase tracking-wider text-[#4338CA] bg-indigo-50 px-3 py-1 rounded-full">
+            Global Exploration
+          </span>
+          <h2 className="mt-4 text-3xl sm:text-4xl font-extrabold text-[#111827]">
+            Discover World Wonders & Hidden Gems
+          </h2>
+          <p className="mt-3 text-base text-[#6B7280]">
+            Browse coordinates, local ratings, landmark reviews, and weather reports across 15+ world-class cities.
+          </p>
+        </div>
+
+        <div className="grid gap-8 md:grid-cols-3">
+          <div className="rounded-2xl border border-[#E5E7EB] bg-white p-6 shadow-xs">
+            <div className="h-40 rounded-xl overflow-hidden mb-4">
+              <img
+                src="https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?auto=format&fit=crop&w=600&q=80"
+                alt="Tokyo"
+                className="h-full w-full object-cover"
+              />
+            </div>
+            <span className="text-xs font-bold text-indigo-600 uppercase">Asia & Culture</span>
+            <h3 className="text-lg font-bold text-[#111827] mt-1">Tokyo & Kyoto Wonders</h3>
+            <p className="text-xs text-[#6B7280] mt-2">
+              Experience bullet trains, ancient shrines, cherry blossoms, and Michelin-star ramen bars.
+            </p>
+            <Link href="/destinations" className="mt-4 inline-flex items-center text-xs font-bold text-[#4338CA] hover:underline">
+              Explore Asia →
+            </Link>
+          </div>
+
+          <div className="rounded-2xl border border-[#E5E7EB] bg-white p-6 shadow-xs">
+            <div className="h-40 rounded-xl overflow-hidden mb-4">
+              <img
+                src="https://images.unsplash.com/photo-1502602898657-3e91760cbb34?auto=format&fit=crop&w=600&q=80"
+                alt="Paris"
+                className="h-full w-full object-cover"
+              />
+            </div>
+            <span className="text-xs font-bold text-rose-600 uppercase">Europe & Heritage</span>
+            <h3 className="text-lg font-bold text-[#111827] mt-1">European Romantic Capitals</h3>
+            <p className="text-xs text-[#6B7280] mt-2">
+              Walk through historic avenues of Paris, Rome, Barcelona, and the breathtaking Swiss Alps.
+            </p>
+            <Link href="/destinations" className="mt-4 inline-flex items-center text-xs font-bold text-[#4338CA] hover:underline">
+              Explore Europe →
+            </Link>
+          </div>
+
+          <div className="rounded-2xl border border-[#E5E7EB] bg-white p-6 shadow-xs">
+            <div className="h-40 rounded-xl overflow-hidden mb-4">
+              <img
+                src="https://images.unsplash.com/photo-1514282401047-d79a71a590e8?auto=format&fit=crop&w=600&q=80"
+                alt="Maldives"
+                className="h-full w-full object-cover"
+              />
+            </div>
+            <span className="text-xs font-bold text-emerald-600 uppercase">Islands & Luxury</span>
+            <h3 className="text-lg font-bold text-[#111827] mt-1">Tropical Island Escapes</h3>
+            <p className="text-xs text-[#6B7280] mt-2">
+              Unwind in turquoise waters, overwater bungalows, and pristine coral reefs in Maldives and Bali.
+            </p>
+            <Link href="/destinations" className="mt-4 inline-flex items-center text-xs font-bold text-[#4338CA] hover:underline">
+              Explore Islands →
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* RESOURCES SECTION */}
+      <section id="resources" className="mx-auto max-w-7xl px-6 py-20 sm:px-10 scroll-mt-20">
+        <div className="text-center max-w-3xl mx-auto mb-16">
+          <span className="text-xs font-bold uppercase tracking-wider text-[#4338CA] bg-indigo-50 px-3 py-1 rounded-full">
+            Travel Essentials
+          </span>
+          <h2 className="mt-4 text-3xl sm:text-4xl font-extrabold text-[#111827]">
+            Guides, Checklists & Resources
+          </h2>
+          <p className="mt-3 text-base text-[#6B7280]">
+            Everything you need to stay prepared, organized, and confident during your travel journeys.
+          </p>
+        </div>
+
+        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="rounded-2xl border border-[#E5E7EB] bg-white p-6 shadow-xs">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-50 text-[#4338CA] mb-4">
+              <CheckCircle2 className="h-5 w-5" />
+            </div>
+            <h3 className="text-base font-bold text-[#111827]">Packing Checklist</h3>
+            <p className="mt-2 text-xs text-[#6B7280] leading-relaxed">
+              Essential items, travel documents, electronic gear, and clothing organized by climate.
+            </p>
+          </div>
+
+          <div className="rounded-2xl border border-[#E5E7EB] bg-white p-6 shadow-xs">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 mb-4">
+              <Globe className="h-5 w-5" />
+            </div>
+            <h3 className="text-base font-bold text-[#111827]">Visa & Entry Rules</h3>
+            <p className="mt-2 text-xs text-[#6B7280] leading-relaxed">
+              Up-to-date passport validity guidelines, e-Visa requirements, and border regulations.
+            </p>
+          </div>
+
+          <div className="rounded-2xl border border-[#E5E7EB] bg-white p-6 shadow-xs">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-50 text-amber-600 mb-4">
+              <Sun className="h-5 w-5" />
+            </div>
+            <h3 className="text-base font-bold text-[#111827]">Seasonal Forecasts</h3>
+            <p className="mt-2 text-xs text-[#6B7280] leading-relaxed">
+              Best travel seasons, high-demand peak months, and rainfall insights per destination.
+            </p>
+          </div>
+
+          <div className="rounded-2xl border border-[#E5E7EB] bg-white p-6 shadow-xs">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-purple-50 text-purple-600 mb-4">
+              <Luggage className="h-5 w-5" />
+            </div>
+            <h3 className="text-base font-bold text-[#111827]">Travel Safety Tips</h3>
+            <p className="mt-2 text-xs text-[#6B7280] leading-relaxed">
+              Emergency contacts, travel insurance recommendations, and health advisory guidelines.
+            </p>
+          </div>
+        </div>
+      </section>
+
       {/* FOOTER */}
       <footer className="border-t border-[#E5E7EB] bg-white py-12">
         <div className="mx-auto max-w-7xl px-6 sm:px-10 flex flex-col sm:flex-row items-center justify-between gap-6">
@@ -422,9 +720,10 @@ export default function LandingPage() {
           </p>
 
           <div className="flex gap-6 text-xs text-[#6B7280]">
-            <a href="#privacy" className="hover:text-[#111827]">Privacy Policy</a>
-            <a href="#terms" className="hover:text-[#111827]">Terms of Service</a>
-            <a href="#contact" className="hover:text-[#111827]">Support</a>
+            <a href="#features" className="hover:text-[#111827]">Features</a>
+            <a href="#destinations" className="hover:text-[#111827]">Destinations</a>
+            <a href="#planner" className="hover:text-[#111827]">Trip Planner</a>
+            <a href="#resources" className="hover:text-[#111827]">Resources</a>
           </div>
         </div>
       </footer>
@@ -461,3 +760,4 @@ export default function LandingPage() {
     </div>
   );
 }
+
