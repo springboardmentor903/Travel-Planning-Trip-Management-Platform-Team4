@@ -24,4 +24,10 @@ public class ExpenseResponse {
     private LocalDate date;
     private String receiptLink;
     private LocalDateTime createdAt;
+    private String tripTitle;
+
+    public ExpenseResponse(Integer id, Integer tripId, Integer budgetId, Integer payerId, String payerName, ExpenseCategory category, BigDecimal amount, LocalDate date, String receiptLink, LocalDateTime createdAt) {
+        this(id, tripId, budgetId, payerId, payerName, category, amount, date, receiptLink, createdAt, null);
+    }
 }
+

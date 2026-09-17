@@ -20,11 +20,14 @@ public class ActivityService {
 
     private final ActivityRepository activityRepository;
     private final ItineraryDayRepository itineraryDayRepository;
+    private final TripAccessService tripAccessService;
 
     @Transactional
     public ActivityResponse createActivity(Integer dayId, CreateActivityRequest request, String userEmail) {
-        ItineraryDay itineraryDay = itineraryDayRepository.findByIdAndTripUserEmail(dayId, userEmail)
+        ItineraryDay itineraryDay = itineraryDayRepository.findById(dayId)
                 .orElseThrow(() -> new ResourceNotFoundException("Itinerary day not found with id: " + dayId));
+
+        tripAccessService.validateTripAccess(itineraryDay.getTrip().getId(), userEmail);
 
         if (request.getStartTime() != null && request.getEndTime() != null && request.getEndTime().isBefore(request.getStartTime())) {
             throw new IllegalArgumentException("End time cannot be before start time");
@@ -44,19 +47,26 @@ public class ActivityService {
 
     @Transactional(readOnly = true)
     public List<ActivityResponse> getActivities(Integer dayId, String userEmail) {
-        if (!itineraryDayRepository.findByIdAndTripUserEmail(dayId, userEmail).isPresent()) {
-            throw new ResourceNotFoundException("Itinerary day not found with id: " + dayId);
-        }
+        ItineraryDay itineraryDay = itineraryDayRepository.findById(dayId)
+                .orElseThrow(() -> new ResourceNotFoundException("Itinerary day not found with id: " + dayId));
 
-        return activityRepository.findByItineraryDayIdAndItineraryDayTripUserEmailOrderByStartTimeAsc(dayId, userEmail).stream()
+        tripAccessService.validateTripAccess(itineraryDay.getTrip().getId(), userEmail);
+
+        return activityRepository.findByItineraryDayIdOrderByStartTimeAsc(dayId).stream()
                 .map(this::mapToResponse)
                 .toList();
     }
 
     @Transactional
     public ActivityResponse updateActivity(Integer dayId, Integer activityId, UpdateActivityRequest request, String userEmail) {
-        Activity activity = activityRepository.findByIdAndItineraryDayIdAndItineraryDayTripUserEmail(activityId, dayId, userEmail)
-                .orElseThrow(() -> new ResourceNotFoundException("Activity not found with id: " + activityId + " for itinerary day: " + dayId));
+        Activity activity = activityRepository.findById(activityId)
+                .orElseThrow(() -> new ResourceNotFoundException("Activity not found with id: " + activityId));
+
+        if (!activity.getItineraryDay().getId().equals(dayId)) {
+            throw new IllegalArgumentException("Activity does not belong to itinerary day with id: " + dayId);
+        }
+
+        tripAccessService.validateTripAccess(activity.getItineraryDay().getTrip().getId(), userEmail);
 
         if (request.getStartTime() != null && request.getEndTime() != null && request.getEndTime().isBefore(request.getStartTime())) {
             throw new IllegalArgumentException("End time cannot be before start time");
@@ -74,8 +84,14 @@ public class ActivityService {
 
     @Transactional
     public void deleteActivity(Integer dayId, Integer activityId, String userEmail) {
-        Activity activity = activityRepository.findByIdAndItineraryDayIdAndItineraryDayTripUserEmail(activityId, dayId, userEmail)
-                .orElseThrow(() -> new ResourceNotFoundException("Activity not found with id: " + activityId + " for itinerary day: " + dayId));
+        Activity activity = activityRepository.findById(activityId)
+                .orElseThrow(() -> new ResourceNotFoundException("Activity not found with id: " + activityId));
+
+        if (!activity.getItineraryDay().getId().equals(dayId)) {
+            throw new IllegalArgumentException("Activity does not belong to itinerary day with id: " + dayId);
+        }
+
+        tripAccessService.validateTripAccess(activity.getItineraryDay().getTrip().getId(), userEmail);
 
         activityRepository.delete(activity);
     }

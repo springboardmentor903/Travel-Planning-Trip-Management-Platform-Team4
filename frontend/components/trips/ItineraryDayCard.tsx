@@ -1,19 +1,24 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { Activity, CreateActivityRequest, ItineraryDay } from "../../lib/types";
+import type { Activity, CreateActivityRequest, ItineraryDay, Trip } from "../../lib/types";
 import { createActivity, deleteActivity, getActivities, updateActivity } from "../../lib/api";
+import { dayToCalendarEvents, downloadIcsFile } from "../../lib/calendarExport";
 import ActivityCard from "./ActivityCard";
 import ActivityModal from "./ActivityModal";
 
 export default function ItineraryDayCard({
   day,
+  trip,
   onEditDay,
   onDeleteDay,
+  onNotification,
 }: {
   day: ItineraryDay;
+  trip?: Trip;
   onEditDay: (day: ItineraryDay) => void;
   onDeleteDay: (day: ItineraryDay) => void;
+  onNotification?: (msg: string) => void;
 }) {
   const [expanded, setExpanded] = useState(true);
   const [activities, setActivities] = useState<Activity[]>([]);
@@ -26,6 +31,15 @@ export default function ItineraryDayCard({
 
   const [deletingActivity, setDeletingActivity] = useState<Activity | null>(null);
   const [isDeletingActivity, setIsDeletingActivity] = useState(false);
+
+  const handleExportDayIcs = () => {
+    if (!trip) return;
+    const dayWithActivities = { ...day, activities };
+    const events = dayToCalendarEvents(dayWithActivities, trip);
+    const filename = `Day_${day.dayNumber}_${(trip.title || "trip").replace(/[^a-zA-Z0-9_-]/g, "_")}.ics`;
+    downloadIcsFile(filename, events);
+    if (onNotification) onNotification("Calendar file downloaded.");
+  };
 
   const loadActivities = async () => {
     setLoading(true);
@@ -105,7 +119,16 @@ export default function ItineraryDayCard({
         </div>
 
         {/* Action Buttons */}
-        <div className="flex items-center gap-2 self-end sm:self-auto">
+        <div className="flex flex-wrap items-center gap-2 self-end sm:self-auto">
+          {trip && (
+            <button
+              onClick={handleExportDayIcs}
+              className="rounded-lg bg-emerald-50 px-2.5 py-1.5 text-xs font-bold text-emerald-800 transition hover:bg-emerald-100"
+              title="Export Day to Calendar (.ics)"
+            >
+              🗓️ Add Day to Cal
+            </button>
+          )}
           <button
             onClick={() => {
               setEditingActivity(null);
@@ -162,11 +185,14 @@ export default function ItineraryDayCard({
                 <ActivityCard
                   key={activity.id}
                   activity={activity}
+                  trip={trip}
+                  dayDate={day.date}
                   onEdit={() => {
                     setEditingActivity(activity);
                     setActivityModalOpen(true);
                   }}
                   onDelete={() => setDeletingActivity(activity)}
+                  onNotification={onNotification}
                 />
               ))}
             </div>
@@ -178,6 +204,7 @@ export default function ItineraryDayCard({
       <ActivityModal
         isOpen={activityModalOpen}
         initialData={editingActivity}
+        defaultDate={day.date}
         onSave={handleSaveActivity}
         onClose={() => {
           setActivityModalOpen(false);

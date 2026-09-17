@@ -1,107 +1,147 @@
 package com.tripnest.tripnest_backend.service;
 
+import com.tripnest.tripnest_backend.dto.NotificationResponse;
+import com.tripnest.tripnest_backend.dto.NotificationUnreadCountResponse;
 import com.tripnest.tripnest_backend.entity.Notification;
+import com.tripnest.tripnest_backend.entity.NotificationType;
 import com.tripnest.tripnest_backend.entity.Trip;
-import com.tripnest.tripnest_backend.entity.TripMember;
 import com.tripnest.tripnest_backend.entity.User;
+import com.tripnest.tripnest_backend.exception.ResourceNotFoundException;
 import com.tripnest.tripnest_backend.repository.NotificationRepository;
-import com.tripnest.tripnest_backend.repository.TripMemberRepository;
-
+import com.tripnest.tripnest_backend.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.HashSet;
-import java.util.Set;
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
 public class NotificationService {
 
     private final NotificationRepository notificationRepository;
-    private final TripMemberRepository tripMemberRepository;
+    private final UserRepository userRepository;
+    private final EmailNotificationService emailNotificationService;
 
     @Transactional
-    public void record(User user, String message) {
-        record(user, message, null);
+    public Notification createNotification(User recipient, String message, NotificationType type) {
+        return createNotification(recipient, type != null ? type.name() : "Notification", message, type, null);
     }
 
     @Transactional
-    public void record(User user, String message, String eventKey) {
-
-        if (user == null) {
-            return;
-        }
-
-        // Prevent duplicate notifications when eventKey exists
-        if (eventKey != null &&
-                notificationRepository.existsByUserIdAndEventKey(
-                        user.getId(), eventKey)) {
-            return;
+    public Notification createNotification(User recipient, String title, String message, NotificationType type, Integer relatedTripId) {
+        if (recipient == null) {
+            return null;
         }
 
         Notification notification = new Notification();
-
-        notification.setUser(user);
+        notification.setRecipient(recipient);
         notification.setMessage(message);
-        notification.setEventKey(eventKey);
+        notification.setType(type);
+        notification.setRelatedTripId(relatedTripId);
+        notification.setRead(false);
 
-        notificationRepository.save(notification);
+        Notification savedNotification = notificationRepository.save(notification);
+
+        // Attempt secondary email notification safely
+        try {
+            emailNotificationService.sendNotificationEmail(
+                    recipient.getEmail(),
+                    recipient.getName(),
+                    title,
+                    message
+            );
+        } catch (Exception ex) {
+            // Silently suppress to protect primary DB notification transaction
+        }
+
+        return savedNotification;
+    }
+
+    @Transactional(readOnly = true)
+    public List<NotificationResponse> getNotificationsForCurrentUser(String currentUserEmail) {
+        User user = userRepository.findByEmail(currentUserEmail)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found with email: " + currentUserEmail));
+
+        return notificationRepository.findByRecipientIdOrderByCreatedAtDesc(user.getId()).stream()
+                .map(this::mapToResponse)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<NotificationResponse> getUserNotifications(String currentUserEmail) {
+        return getNotificationsForCurrentUser(currentUserEmail);
+    }
+
+    @Transactional(readOnly = true)
+    public NotificationUnreadCountResponse getUnreadNotificationCount(String currentUserEmail) {
+        User user = userRepository.findByEmail(currentUserEmail)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found with email: " + currentUserEmail));
+
+        long count = notificationRepository.countByRecipientIdAndIsReadFalse(user.getId());
+        return new NotificationUnreadCountResponse(count);
+    }
+
+    @Transactional(readOnly = true)
+    public NotificationUnreadCountResponse getUnreadCount(String currentUserEmail) {
+        return getUnreadNotificationCount(currentUserEmail);
     }
 
     @Transactional
-    public void notifyTripParticipants(
-            Trip trip,
-            String message,
-            String eventKey,
-            boolean uniquePerUser
-    ) {
+    public NotificationResponse markNotificationAsRead(Long notificationId, String currentUserEmail) {
+        User user = userRepository.findByEmail(currentUserEmail)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found with email: " + currentUserEmail));
 
-        if (trip == null) {
-            return;
+        // Ownership validation: Querying by notificationId AND recipientId ensures user owns this notification
+        Notification notification = notificationRepository.findByIdAndRecipientId(notificationId, user.getId())
+                .orElseThrow(() -> new ResourceNotFoundException("Notification not found with id: " + notificationId));
+
+        notification.setRead(true);
+        Notification updated = notificationRepository.save(notification);
+        return mapToResponse(updated);
+    }
+
+    @Transactional
+    public NotificationResponse markAsRead(Long notificationId, String currentUserEmail) {
+        return markNotificationAsRead(notificationId, currentUserEmail);
+    }
+
+    @Transactional
+    public void markAllAsRead(String currentUserEmail) {
+        User user = userRepository.findByEmail(currentUserEmail)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found with email: " + currentUserEmail));
+
+        notificationRepository.markAllAsReadByRecipientId(user.getId());
+    }
+
+    @Transactional
+    public void deleteNotification(Long notificationId, String currentUserEmail) {
+        User user = userRepository.findByEmail(currentUserEmail)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found with email: " + currentUserEmail));
+
+        Notification notification = notificationRepository.findByIdAndRecipientId(notificationId, user.getId())
+                .orElseThrow(() -> new ResourceNotFoundException("Notification not found with id: " + notificationId));
+
+        notificationRepository.delete(notification);
+    }
+
+    @Transactional
+    public void notifyTripParticipants(Trip trip, String message, String key, boolean sendEmail) {
+        if (trip != null && trip.getUser() != null) {
+            createNotification(trip.getUser(), "Trip Reminder", message, NotificationType.TRIP_REMINDER, trip.getId());
         }
+    }
 
-        Set<Integer> notifiedUserIds = new HashSet<>();
-
-        // Notify trip owner
-        if (trip.getUser() != null) {
-
-            String ownerEventKey = eventKey;
-
-            if (uniquePerUser && eventKey != null) {
-                ownerEventKey = eventKey + ":USER:" + trip.getUser().getId();
-            }
-
-            record(
-                    trip.getUser(),
-                    message,
-                    ownerEventKey
-            );
-
-            notifiedUserIds.add(trip.getUser().getId());
-        }
-
-        // Notify trip members
-        for (TripMember member :
-                tripMemberRepository.findByTripId(trip.getId())) {
-
-            User user = member.getUser();
-
-            if (user == null ||
-                    notifiedUserIds.contains(user.getId())) {
-                continue;
-            }
-
-            String memberEventKey = eventKey;
-
-            if (uniquePerUser && eventKey != null) {
-                memberEventKey =
-                        eventKey + ":USER:" + user.getId();
-            }
-
-            record(user, message, memberEventKey);
-
-            notifiedUserIds.add(user.getId());
-        }
+    private NotificationResponse mapToResponse(Notification n) {
+        return new NotificationResponse(
+                n.getId(),
+                n.getRecipient().getId(),
+                n.getType() != null ? n.getType().name() : "Notification",
+                n.getMessage(),
+                n.getType(),
+                n.getRelatedTripId(),
+                n.isRead(),
+                n.getCreatedAt()
+        );
     }
 }

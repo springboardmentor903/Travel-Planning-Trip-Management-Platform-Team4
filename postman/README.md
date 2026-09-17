@@ -57,6 +57,7 @@ This directory contains the Postman Collection and Environment configuration fil
 
 ### 5. Admin Management (`/api/admin`)
 - `GET /api/admin/dashboard` - Admin dashboard
+- `GET /api/admin/analytics` - Administrator Analytics Dashboard metrics (Users, Trips, Destinations, Platform Stats)
 - `GET /api/admin/users` - List all registered users
 - `PUT /api/admin/users/{id}/role` - Update role for a user
 

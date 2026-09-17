@@ -6,9 +6,11 @@ import com.tripnest.tripnest_backend.dto.UpdateTripRequest;
 import com.tripnest.tripnest_backend.entity.Destination;
 import com.tripnest.tripnest_backend.entity.Role;
 import com.tripnest.tripnest_backend.entity.Trip;
+import com.tripnest.tripnest_backend.entity.TripStatus;
 import com.tripnest.tripnest_backend.entity.User;
 import com.tripnest.tripnest_backend.exception.ResourceNotFoundException;
 import com.tripnest.tripnest_backend.repository.DestinationRepository;
+import com.tripnest.tripnest_backend.repository.TripMembershipRepository;
 import com.tripnest.tripnest_backend.repository.TripRepository;
 import com.tripnest.tripnest_backend.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -39,6 +41,15 @@ class TripServiceTest {
     @Mock
     private DestinationRepository destinationRepository;
 
+    @Mock
+    private NotificationService notificationService;
+
+    @Mock
+    private TripAccessService tripAccessService;
+
+    @Mock
+    private TripMembershipRepository tripMembershipRepository;
+
     @InjectMocks
     private TripService tripService;
 
@@ -48,7 +59,7 @@ class TripServiceTest {
     @BeforeEach
     void setUp() {
         Role role = new Role(1, "TRAVELER");
-        userA = new User(10, "User A", "usera@example.com", "hash", role, false, LocalDateTime.now());
+        userA = new User(10, "User A", "usera@example.com", "hash", role, false, true, LocalDateTime.now());
         destination = new Destination(1, "Paris", "France", "Paris", "Description", "http://example.com/paris.jpg", "City");
     }
 
@@ -66,7 +77,7 @@ class TripServiceTest {
         Trip savedTrip = new Trip(
                 100, "Paris Vacation", userA, destination,
                 request.getStartDate(), request.getEndDate(),
-                1500.0, "Sightseeing", LocalDateTime.now()
+                1500.0, "Sightseeing", TripStatus.PLANNED, LocalDateTime.now()
         );
         when(tripRepository.save(any(Trip.class))).thenReturn(savedTrip);
 
@@ -81,8 +92,8 @@ class TripServiceTest {
 
     @Test
     void testGetTripById_Success() {
-        Trip trip = new Trip(100, "Paris Trip", userA, destination, LocalDate.now().plusDays(1), LocalDate.now().plusDays(5), 1000.0, "Notes", LocalDateTime.now());
-        when(tripRepository.findByIdAndUserEmail(100, "usera@example.com")).thenReturn(Optional.of(trip));
+        Trip trip = new Trip(100, "Paris Trip", userA, destination, LocalDate.now().plusDays(1), LocalDate.now().plusDays(5), 1000.0, "Notes", TripStatus.PLANNED, LocalDateTime.now());
+        when(tripRepository.findById(100)).thenReturn(Optional.of(trip));
 
         TripResponse response = tripService.getTripById(100, "usera@example.com");
 
@@ -94,17 +105,18 @@ class TripServiceTest {
 
     @Test
     void testGetTripById_NotFoundOrUnauthorized() {
-        when(tripRepository.findByIdAndUserEmail(100, "userb@example.com")).thenReturn(Optional.empty());
+        doThrow(new ResourceNotFoundException("Trip not found"))
+                .when(tripAccessService).validateTripAccess(100, "userb@example.com");
 
         assertThrows(ResourceNotFoundException.class, () -> tripService.getTripById(100, "userb@example.com"));
     }
 
     @Test
     void testUpdateTrip_Success() {
-        Trip trip = new Trip(100, "Old Title", userA, destination, LocalDate.now().plusDays(1), LocalDate.now().plusDays(5), 1000.0, "Notes", LocalDateTime.now());
+        Trip trip = new Trip(100, "Old Title", userA, destination, LocalDate.now().plusDays(1), LocalDate.now().plusDays(5), 1000.0, "Notes", TripStatus.PLANNED, LocalDateTime.now());
         UpdateTripRequest updateRequest = new UpdateTripRequest("Updated Title", 1, LocalDate.now().plusDays(2), LocalDate.now().plusDays(7), 2000.0, "Updated Notes");
 
-        when(tripRepository.findByIdAndUserEmail(100, "usera@example.com")).thenReturn(Optional.of(trip));
+        when(tripRepository.findById(100)).thenReturn(Optional.of(trip));
         when(destinationRepository.findById(1)).thenReturn(Optional.of(destination));
         when(tripRepository.save(any(Trip.class))).thenReturn(trip);
 
@@ -117,15 +129,16 @@ class TripServiceTest {
     @Test
     void testUpdateTrip_Unauthorized() {
         UpdateTripRequest updateRequest = new UpdateTripRequest("Updated Title", 1, LocalDate.now().plusDays(2), LocalDate.now().plusDays(7), 2000.0, "Updated Notes");
-        when(tripRepository.findByIdAndUserEmail(100, "userb@example.com")).thenReturn(Optional.empty());
+        doThrow(new ResourceNotFoundException("Unauthorized"))
+                .when(tripAccessService).validateTripManagement(100, "userb@example.com");
 
         assertThrows(ResourceNotFoundException.class, () -> tripService.updateTrip(100, updateRequest, "userb@example.com"));
     }
 
     @Test
     void testDeleteTrip_Success() {
-        Trip trip = new Trip(100, "Trip to Delete", userA, destination, LocalDate.now().plusDays(1), LocalDate.now().plusDays(5), 1000.0, "Notes", LocalDateTime.now());
-        when(tripRepository.findByIdAndUserEmail(100, "usera@example.com")).thenReturn(Optional.of(trip));
+        Trip trip = new Trip(100, "Trip to Delete", userA, destination, LocalDate.now().plusDays(1), LocalDate.now().plusDays(5), 1000.0, "Notes", TripStatus.PLANNED, LocalDateTime.now());
+        when(tripRepository.findById(100)).thenReturn(Optional.of(trip));
 
         tripService.deleteTrip(100, "usera@example.com");
 
@@ -134,7 +147,8 @@ class TripServiceTest {
 
     @Test
     void testDeleteTrip_Unauthorized() {
-        when(tripRepository.findByIdAndUserEmail(100, "userb@example.com")).thenReturn(Optional.empty());
+        doThrow(new ResourceNotFoundException("Unauthorized"))
+                .when(tripAccessService).validateTripManagement(100, "userb@example.com");
 
         assertThrows(ResourceNotFoundException.class, () -> tripService.deleteTrip(100, "userb@example.com"));
         verify(tripRepository, never()).delete(any());

@@ -18,6 +18,8 @@ public interface ExpenseRepository extends JpaRepository<Expense, Integer> {
 
     List<Expense> findByTripIdOrderByDateDesc(Integer tripId);
 
+    List<Expense> findAllByOrderByDateDesc();
+
     List<Expense> findByTripIdAndTripUserEmail(Integer tripId, String email);
 
     Optional<Expense> findByIdAndTripId(Integer id, Integer tripId);
@@ -30,4 +32,7 @@ public interface ExpenseRepository extends JpaRepository<Expense, Integer> {
     @Query("SELECT new com.tripnest.tripnest_backend.dto.ExpenseCategorySummary(e.category, SUM(e.amount)) " +
            "FROM Expense e WHERE e.trip.id = :tripId GROUP BY e.category")
     List<ExpenseCategorySummary> findCategorySummariesByTripId(@Param("tripId") Integer tripId);
+
+    @Query("SELECT COALESCE(SUM(e.amount), 0) FROM Expense e")
+    BigDecimal getTotalExpenses();
 }

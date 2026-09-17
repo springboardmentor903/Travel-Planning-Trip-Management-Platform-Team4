@@ -18,7 +18,7 @@ public class DestinationService {
 
     @Transactional(readOnly = true)
     public List<DestinationResponse> getAllDestinations() {
-        return destinationRepository.findAll().stream()
+        return destinationRepository.findByActiveTrue().stream()
                 .map(this::mapToResponse)
                 .toList();
     }

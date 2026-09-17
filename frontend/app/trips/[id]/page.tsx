@@ -4,30 +4,68 @@ import AppShell from "../../../components/AppShell";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { deleteTrip, getTrip } from "../../../lib/api";
-import type { Trip } from "../../../lib/types";
+import { toast } from "sonner";
+import {
+  deleteTrip,
+  getActivities,
+  getExpenses,
+  getItineraries,
+  getRemainingBudget,
+  getTrip,
+  getTripMembers,
+} from "../../../lib/api";
+import type { Trip, TripMemberResponse } from "../../../lib/types";
 import ItinerarySection from "../../../components/trips/ItinerarySection";
 import ExpenseSection from "../../../components/trips/ExpenseSection";
-import TripStatusBadge from "../../../components/trips/TripStatusBadge";
+import MembersSection from "../../../components/trips/MembersSection";
+import JoinRequestsSection from "../../../components/trips/JoinRequestsSection";
+import SmartPackingChecklist from "../../../components/trips/SmartPackingChecklist";
+import { generateTravelPassPDF } from "../../../lib/pdfGenerator";
+import { buildGoogleCalendarUrl, downloadIcsFile, tripToCalendarEvents } from "../../../lib/calendarExport";
+import { useCurrency } from "../../../lib/currency";
 
 export default function TripDetailPage() {
+  const { format: formatBudget } = useCurrency();
   const params = useParams<{ id: string }>();
   const router = useRouter();
   const [trip, setTrip] = useState<Trip | null>(null);
+  const [members, setMembers] = useState<TripMemberResponse[]>([]);
+  const [currentUser, setCurrentUser] = useState<{ id?: number; email?: string; name?: string } | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+  const [isExportingCalendar, setIsExportingCalendar] = useState(false);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const stored = localStorage.getItem("user");
+      if (stored) {
+        try {
+          setCurrentUser(JSON.parse(stored));
+        } catch {
+          setCurrentUser(null);
+        }
+      }
+    }
+  }, []);
 
   const loadTrip = async () => {
     if (!params.id) return;
     setLoading(true);
     setError("");
     try {
-      const data = await getTrip(params.id);
-      setTrip(data);
+      const [tripData, memberList] = await Promise.all([
+        getTrip(params.id),
+        getTripMembers(params.id).catch(() => []),
+      ]);
+      setTrip(tripData);
+      setMembers(memberList);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Unable to load trip details from backend.");
+      const msg = err instanceof Error ? err.message : "Unable to load trip details.";
+      setError(msg);
+      toast.error(msg);
     } finally {
       setLoading(false);
     }
@@ -37,17 +75,114 @@ export default function TripDetailPage() {
     loadTrip();
   }, [params.id]);
 
+  const isOwner =
+    trip != null &&
+    ((currentUser?.id != null && trip.userId === currentUser.id) ||
+      (currentUser?.email != null && trip.userEmail?.toLowerCase() === currentUser.email.toLowerCase()));
+
+  const currentMemberRecord = members.find(
+    (m) =>
+      (currentUser?.id != null && m.userId === currentUser.id) ||
+      (currentUser?.email != null && m.email.toLowerCase() === currentUser.email.toLowerCase())
+  );
+
+  const isGroupAdmin = currentMemberRecord?.role === "GROUP_ADMIN";
+  const canManage = isOwner || isGroupAdmin;
+
   const handleDelete = async () => {
     if (!trip) return;
     setIsDeleting(true);
     try {
       await deleteTrip(trip.id);
+      toast.success("Trip deleted successfully.");
       router.push("/trips");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to delete trip.");
+      const msg = err instanceof Error ? err.message : "Unable to save your trip.";
+      toast.error(msg);
+      setError(msg);
       setDeleteModalOpen(false);
     } finally {
       setIsDeleting(false);
+    }
+  };
+
+  const handleDownloadPass = async () => {
+    if (!trip) return;
+    setIsGeneratingPdf(true);
+    try {
+      const [daysData, expensesData, budgetData] = await Promise.all([
+        getItineraries(trip.id).catch(() => []),
+        getExpenses(trip.id).catch(() => []),
+        getRemainingBudget(trip.id).catch(() => null),
+      ]);
+
+      const fullDays = await Promise.all(
+        daysData.map(async (day) => {
+          try {
+            const acts = await getActivities(day.id);
+            return { ...day, activities: acts };
+          } catch {
+            return day;
+          }
+        })
+      );
+
+      generateTravelPassPDF(trip, fullDays, expensesData, budgetData, currentUser);
+      toast.success("Travel pass generated.");
+    } catch {
+      toast.error("Unable to generate travel pass.");
+    } finally {
+      setIsGeneratingPdf(false);
+    }
+  };
+
+  const handleExportFullIcs = async () => {
+    if (!trip) return;
+    setIsExportingCalendar(true);
+    try {
+      const daysData = await getItineraries(trip.id).catch(() => []);
+      const fullDays = await Promise.all(
+        daysData.map(async (day) => {
+          try {
+            const acts = await getActivities(day.id);
+            return { ...day, activities: acts };
+          } catch {
+            return day;
+          }
+        })
+      );
+
+      const events = tripToCalendarEvents(trip, fullDays);
+      const filename = `${trip.title.replace(/[^a-zA-Z0-9_-]/g, "_")}_Itinerary.ics`;
+      downloadIcsFile(filename, events);
+      toast.success("Calendar exported.");
+    } catch {
+      toast.error("Failed to export calendar file.");
+    } finally {
+      setIsExportingCalendar(false);
+    }
+  };
+
+  const handleOpenGoogleCalendar = async () => {
+    if (!trip) return;
+    try {
+      const daysData = await getItineraries(trip.id).catch(() => []);
+      const fullDays = await Promise.all(
+        daysData.map(async (day) => {
+          try {
+            const acts = await getActivities(day.id);
+            return { ...day, activities: acts };
+          } catch {
+            return day;
+          }
+        })
+      );
+      const events = tripToCalendarEvents(trip, fullDays);
+      const url = buildGoogleCalendarUrl(events[0]);
+      window.open(url, "_blank", "noopener,noreferrer");
+      toast.success("Calendar link opened.");
+    } catch {
+      toast.error("Failed to open Google Calendar.");
     }
   };
 
@@ -57,23 +192,30 @@ export default function TripDetailPage() {
       <div className="mb-7 flex items-center justify-between">
         <Link
           href="/trips"
-          className="inline-flex items-center text-sm font-bold text-indigo-600 transition hover:text-indigo-700"
+          className="inline-flex items-center text-sm font-bold text-indigo-600 transition hover:text-indigo-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 rounded-lg px-2 py-1"
         >
           ← Back to Trip History
         </Link>
       </div>
 
-      {/* Global Error Banner */}
-      {error && (
-        <div className="mb-6 rounded-xl border border-red-200 bg-red-50 p-4 text-sm font-semibold text-red-700">
-          {error}
+      {/* Global Error Banner / Retry UI */}
+      {error && !loading && !trip && (
+        <div className="mb-6 rounded-2xl border border-red-200 bg-red-50 p-6 text-center shadow-sm">
+          <p className="text-base font-bold text-red-900">Something went wrong.</p>
+          <p className="mt-1 text-sm text-red-700">{error}</p>
+          <button
+            onClick={loadTrip}
+            className="mt-4 rounded-xl bg-red-600 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-red-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 active:scale-95"
+          >
+            Try Again
+          </button>
         </div>
       )}
 
       {loading ? (
         <div className="rounded-2xl border border-slate-200 bg-white p-12 text-center text-sm font-semibold text-slate-500">
           <div className="mx-auto mb-3 h-8 w-8 animate-spin rounded-full border-4 border-indigo-600 border-t-transparent" />
-          Loading trip details from backend…
+          Loading trip details…
         </div>
       ) : !trip ? (
         <div className="rounded-2xl border border-slate-200 bg-white p-12 text-center">
@@ -91,15 +233,30 @@ export default function TripDetailPage() {
           {/* Main Trip Card Component */}
           <TripOverviewCard
             trip={trip}
+            canManage={canManage}
             onEdit={() => router.push(`/trips/${trip.id}/edit`)}
             onDelete={() => setDeleteModalOpen(true)}
+            onDownloadPass={handleDownloadPass}
+            onExportIcs={handleExportFullIcs}
+            onGoogleCalendar={handleOpenGoogleCalendar}
+            isGeneratingPdf={isGeneratingPdf}
+            isExportingCalendar={isExportingCalendar}
           />
+
+          {/* Pending Join Requests (Owner / Group Admin Only) */}
+          <JoinRequestsSection tripId={trip.id} canManage={canManage} onMemberAdded={loadTrip} />
+
+          {/* Group Members Section */}
+          <MembersSection tripId={trip.id} ownerId={trip.userId} ownerEmail={trip.userEmail} />
 
           {/* Budget & Expense Tracking Section */}
           <ExpenseSection trip={trip} onTripUpdated={loadTrip} />
 
           {/* Full Day-by-Day Itinerary & Activity Section */}
           <ItinerarySection trip={trip} />
+
+          {/* Weather-Aware Smart Packing Checklist Section */}
+          <SmartPackingChecklist trip={trip} />
         </div>
       )}
 
@@ -136,13 +293,27 @@ export default function TripDetailPage() {
 
 function TripOverviewCard({
   trip,
+  canManage,
   onEdit,
   onDelete,
+  onDownloadPass,
+  onExportIcs,
+  onGoogleCalendar,
+  isGeneratingPdf,
+  isExportingCalendar,
 }: {
   trip: Trip;
+  canManage: boolean;
   onEdit: () => void;
   onDelete: () => void;
+  onDownloadPass: () => void;
+  onExportIcs: () => void;
+  onGoogleCalendar: () => void;
+  isGeneratingPdf: boolean;
+  isExportingCalendar: boolean;
 }) {
+  const { format: formatBudget } = useCurrency();
+  const status = getTripStatus(trip.startDate, trip.endDate);
   const duration = calculateDurationDays(trip.startDate, trip.endDate);
 
   return (
@@ -177,20 +348,67 @@ function TripOverviewCard({
             </p>
           </div>
 
-          <div className="flex items-center gap-2">
-            <button
-              onClick={onEdit}
-              className="rounded-xl border border-white/20 bg-white/10 px-4 py-2.5 text-sm font-bold text-white backdrop-blur-md transition hover:bg-white/20"
-            >
-              ✏️ Edit Trip
-            </button>
-            <button
-              onClick={onDelete}
-              className="rounded-xl border border-red-300/30 bg-red-600/30 px-4 py-2.5 text-sm font-bold text-red-200 backdrop-blur-md transition hover:bg-red-600/50 hover:text-white"
-            >
-              🗑️ Delete
-            </button>
+          {canManage && (
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                onClick={onEdit}
+                className="rounded-xl border border-white/20 bg-white/10 px-4 py-2.5 text-sm font-bold text-white backdrop-blur-md transition hover:bg-white/20"
+              >
+                ✏️ Edit Trip
+              </button>
+              <button
+                onClick={onDelete}
+                className="rounded-xl border border-red-300/30 bg-red-600/30 px-4 py-2.5 text-sm font-bold text-red-200 backdrop-blur-md transition hover:bg-red-600/50 hover:text-white"
+              >
+                🗑️ Delete
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Feature Action Bar: PDF Travel Pass & Calendar Exports */}
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 bg-indigo-50/50 px-6 py-4 sm:px-8">
+        <div className="flex items-center gap-2">
+          <span className="text-xl">📄</span>
+          <div>
+            <h3 className="text-sm font-black text-slate-900">Tripnest Pass & Calendar Export</h3>
+            <p className="text-xs text-slate-500">Download your official travel pass document or export itinerary to calendar apps.</p>
           </div>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            disabled={isGeneratingPdf}
+            onClick={onDownloadPass}
+            className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-xs font-black text-white shadow-md shadow-indigo-200 transition hover:bg-indigo-700 active:scale-95 disabled:opacity-50"
+          >
+            {isGeneratingPdf ? (
+              <>
+                <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                <span>Generating Pass…</span>
+              </>
+            ) : (
+              <>
+                <span>📄 Download Travel Pass</span>
+              </>
+            )}
+          </button>
+
+          <button
+            disabled={isExportingCalendar}
+            onClick={onExportIcs}
+            className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-extrabold text-slate-700 shadow-sm transition hover:bg-slate-50 active:scale-95 disabled:opacity-50"
+          >
+            <span>🗓️ Export .ics</span>
+          </button>
+
+          <button
+            onClick={onGoogleCalendar}
+            className="inline-flex items-center gap-1.5 rounded-xl border border-amber-200 bg-amber-50 px-4 py-2.5 text-xs font-extrabold text-amber-900 shadow-sm transition hover:bg-amber-100 active:scale-95"
+          >
+            <span>📅 Add to Google Calendar</span>
+          </button>
         </div>
       </div>
 
@@ -256,12 +474,4 @@ function formatDate(value: string) {
     month: "short",
     year: "numeric",
   });
-}
-
-function formatBudget(value: number) {
-  return new Intl.NumberFormat("en-IN", {
-    style: "currency",
-    currency: "INR",
-    maximumFractionDigits: 0,
-  }).format(value);
 }

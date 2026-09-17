@@ -10,31 +10,18 @@ export default function NotificationsPage() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [backendMissing, setBackendMissing] = useState(false);
 
   const loadNotifications = async () => {
     setLoading(true);
     setError(null);
-    setBackendMissing(false);
 
     try {
       const data = await getNotifications();
       setNotifications(data || []);
     } catch (err: unknown) {
-      // Check if endpoint is 404 or 405 (missing controller in backend)
-      const is404 =
-        err instanceof Error &&
-        (err.message.includes("404") ||
-          err.message.toLowerCase().includes("not found") ||
-          (err as { status?: number }).status === 404);
-
-      if (is404) {
-        setBackendMissing(true);
-      } else {
-        setError(
-          err instanceof Error ? err.message : "Unable to load notifications."
-        );
-      }
+      setError(
+        err instanceof Error ? err.message : "Unable to load notifications."
+      );
     } finally {
       setLoading(false);
     }
@@ -46,14 +33,25 @@ export default function NotificationsPage() {
 
   return (
     <AppShell>
-      <div className="mb-7">
-        <p className="text-sm font-bold text-indigo-600">Inbox</p>
-        <h1 className="mt-1 text-3xl font-extrabold tracking-tight text-slate-900">
-          Notifications & Reminders
-        </h1>
-        <p className="mt-2 text-sm text-slate-500">
-          Stay on schedule with automated notifications for scheduled trips and daily itinerary activities.
-        </p>
+      {/* Hero Banner Header */}
+      <div className="relative mb-8 overflow-hidden rounded-3xl bg-gradient-to-r from-indigo-900 via-indigo-800 to-purple-900 p-6 sm:p-8 text-white shadow-xl shadow-indigo-950/10">
+        <div className="absolute right-0 top-0 -mt-10 -mr-10 h-64 w-64 rounded-full bg-indigo-500/10 blur-3xl" />
+        <div className="absolute bottom-0 right-1/4 -mb-10 h-48 w-48 rounded-full bg-purple-500/10 blur-2xl" />
+
+        <div className="relative z-10 flex flex-col justify-between gap-6 md:flex-row md:items-center">
+          <div>
+            <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3.5 py-1 text-xs font-bold uppercase tracking-wider text-indigo-200 backdrop-blur-md border border-white/10">
+              <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+              Inbox & Reminders
+            </div>
+            <h1 className="mt-3 text-3xl font-black tracking-tight sm:text-4xl text-white">
+              Notifications & Reminders
+            </h1>
+            <p className="mt-2 max-w-xl text-sm font-medium text-indigo-100/80 leading-relaxed">
+              Stay on schedule with real-time departure reminders, itinerary updates, and live weather forecast notifications.
+            </p>
+          </div>
+        </div>
       </div>
 
       <NotificationPanel
@@ -61,7 +59,6 @@ export default function NotificationsPage() {
         loading={loading}
         error={error}
         onRefresh={loadNotifications}
-        backendEndpointMissing={backendMissing}
       />
     </AppShell>
   );

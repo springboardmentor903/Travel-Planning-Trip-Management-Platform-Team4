@@ -4,7 +4,9 @@ import com.tripnest.tripnest_backend.dto.CategorySummaryResponse;
 import com.tripnest.tripnest_backend.dto.CreateExpenseRequest;
 import com.tripnest.tripnest_backend.dto.ExpenseCategorySummary;
 import com.tripnest.tripnest_backend.dto.ExpenseResponse;
+import com.tripnest.tripnest_backend.dto.RemainingBudgetResponse;
 import com.tripnest.tripnest_backend.dto.UpdateExpenseRequest;
+import com.tripnest.tripnest_backend.entity.NotificationType;
 import com.tripnest.tripnest_backend.entity.Budget;
 import com.tripnest.tripnest_backend.entity.Expense;
 import com.tripnest.tripnest_backend.entity.Trip;
@@ -12,6 +14,7 @@ import com.tripnest.tripnest_backend.entity.User;
 import com.tripnest.tripnest_backend.exception.ResourceNotFoundException;
 import com.tripnest.tripnest_backend.repository.BudgetRepository;
 import com.tripnest.tripnest_backend.repository.ExpenseRepository;
+import com.tripnest.tripnest_backend.repository.TripMembershipRepository;
 import com.tripnest.tripnest_backend.repository.TripRepository;
 import com.tripnest.tripnest_backend.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -19,7 +22,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.time.LocalDate;
 import java.util.List;
 
 import com.tripnest.tripnest_backend.dto.*;
@@ -39,6 +41,8 @@ public class ExpenseService {
     private final TripRepository tripRepository;
     private final UserRepository userRepository;
     private final BudgetRepository budgetRepository;
+    private final TripMembershipRepository tripMembershipRepository;
+    private final TripAccessService tripAccessService;
     private final NotificationService notificationService;
 
     @Transactional
@@ -46,16 +50,42 @@ public class ExpenseService {
         Trip trip = findAndValidateTripAccess(tripId, authenticatedUserEmail);
         validateRequest(request.getCategory(), request.getAmount(), request.getDate());
         Budget budget = budgetRepository.findFirstByTripId(tripId).orElse(null);
-        User payer = resolvePayer(request.getPayerId(), trip);
-        BigDecimal previousTotal = getTotalExpenses(tripId);
+
+        User payer;
+        if (request.getPayerId() != null) {
+            payer = userRepository.findById(request.getPayerId())
+                    .orElseThrow(() -> new IllegalArgumentException("Invalid payer for trip"));
+            boolean isPayerConnected = trip.getUser().getId().equals(payer.getId()) ||
+                    tripMembershipRepository.existsByTripIdAndUserId(tripId, payer.getId());
+            if (!isPayerConnected) {
+                throw new IllegalArgumentException("Payer is not connected to this trip");
+            }
+        } else {
+            payer = userRepository.findByEmail(authenticatedUserEmail).orElse(trip.getUser());
+        }
 
         Expense expense = new Expense();
-        expense.setTrip(trip); expense.setBudget(budget); expense.setPayer(payer);
-        expense.setCategory(request.getCategory()); expense.setAmount(request.getAmount());
-        expense.setDate(request.getDate()); expense.setReceiptLink(request.getReceiptLink());
-        Expense saved = expenseRepository.save(expense);
-        checkBudgetThresholds(trip, previousTotal, previousTotal.add(saved.getAmount()));
-        return mapToResponse(saved);
+        expense.setTrip(trip);
+        expense.setBudget(budget);
+        expense.setPayer(payer);
+        expense.setCategory(request.getCategory());
+        expense.setAmount(request.getAmount());
+        expense.setDate(request.getDate());
+        expense.setReceiptLink(request.getReceiptLink());
+
+        Expense savedExpense = expenseRepository.save(expense);
+
+        if (!trip.getUser().getId().equals(payer.getId())) {
+            notificationService.createNotification(
+                    trip.getUser(),
+                    "New Expense Added 💰",
+                    payer.getName() + " added an expense of $" + request.getAmount() + " (" + request.getCategory() + ") to '" + trip.getTitle() + "'.",
+                    NotificationType.EXPENSE_ADDED,
+                    tripId
+            );
+        }
+
+        return mapToResponse(savedExpense);
     }
 
     @Transactional(readOnly = true)
@@ -72,15 +102,38 @@ public class ExpenseService {
         if (!expense.getTrip().getId().equals(tripId)) throw new IllegalArgumentException("Expense does not belong to trip with id: " + tripId);
         validateRequest(request.getCategory(), request.getAmount(), request.getDate());
 
-        BigDecimal previousTotal = getTotalExpenses(tripId);
-        BigDecimal oldAmount = expense.getAmount();
-        if (request.getPayerId() != null) expense.setPayer(resolvePayer(request.getPayerId(), trip));
-        expense.setCategory(request.getCategory()); expense.setAmount(request.getAmount());
-        expense.setDate(request.getDate()); expense.setReceiptLink(request.getReceiptLink());
-        Expense updated = expenseRepository.save(expense);
-        BigDecimal newTotal = previousTotal.subtract(oldAmount).add(updated.getAmount());
-        checkBudgetThresholds(trip, previousTotal, newTotal);
-        return mapToResponse(updated);
+        if (!expense.getTrip().getId().equals(tripId)) {
+            throw new IllegalArgumentException("Expense does not belong to trip with id: " + tripId);
+        }
+
+        if (request.getCategory() == null) {
+            throw new IllegalArgumentException("Expense category is required");
+        }
+        if (request.getAmount() == null || request.getAmount().compareTo(BigDecimal.ZERO) <= 0) {
+            throw new IllegalArgumentException("Expense amount must be positive");
+        }
+        if (request.getDate() == null) {
+            throw new IllegalArgumentException("Expense date is required");
+        }
+
+        if (request.getPayerId() != null) {
+            User payer = userRepository.findById(request.getPayerId())
+                    .orElseThrow(() -> new IllegalArgumentException("Invalid payer for trip"));
+            boolean isPayerConnected = trip.getUser().getId().equals(payer.getId()) ||
+                    tripMembershipRepository.existsByTripIdAndUserId(tripId, payer.getId());
+            if (!isPayerConnected) {
+                throw new IllegalArgumentException("Payer is not connected to this trip");
+            }
+            expense.setPayer(payer);
+        }
+
+        expense.setCategory(request.getCategory());
+        expense.setAmount(request.getAmount());
+        expense.setDate(request.getDate());
+        expense.setReceiptLink(request.getReceiptLink());
+
+        Expense updatedExpense = expenseRepository.save(expense);
+        return mapToResponse(updatedExpense);
     }
 
     @Transactional
@@ -108,57 +161,28 @@ public class ExpenseService {
     @Transactional(readOnly = true)
     public RemainingBudgetResponse getRemainingBudgetDetails(Integer tripId, String authenticatedUserEmail) {
         Trip trip = findAndValidateTripAccess(tripId, authenticatedUserEmail);
-        BigDecimal totalBudget = getBudgetAmount(trip);
-        BigDecimal totalExpenses = getTotalExpenses(tripId);
-        return new RemainingBudgetResponse(totalBudget, totalExpenses, totalBudget.subtract(totalExpenses));
-    }
 
-    private void checkBudgetThresholds(Trip trip, BigDecimal before, BigDecimal after) {
-        BigDecimal budget = getBudgetAmount(trip);
-        if (budget.compareTo(BigDecimal.ZERO) <= 0) return;
-        checkThreshold(trip, before, after, budget, 80);
-        checkThreshold(trip, before, after, budget, 100);
-    }
-
-    private void checkThreshold(Trip trip, BigDecimal before, BigDecimal after, BigDecimal budget, int threshold) {
-        BigDecimal limit = budget.multiply(BigDecimal.valueOf(threshold)).divide(BigDecimal.valueOf(100));
-        if (before.compareTo(limit) < 0 && after.compareTo(limit) >= 0) {
-            String key = "BUDGET_" + threshold + ":" + trip.getId();
-            String message = "Budget alert: Trip '" + trip.getTitle() + "' has reached " + threshold + "% of its budget.";
-            notificationService.notifyTripParticipants(trip, message, key, true);
+        BigDecimal totalBudget = BigDecimal.ZERO;
+        Budget budget = budgetRepository.findFirstByTripId(tripId).orElse(null);
+        if (budget != null && budget.getTotalBudget() != null) {
+            totalBudget = BigDecimal.valueOf(budget.getTotalBudget());
+        } else if (trip.getBudget() != null) {
+            totalBudget = BigDecimal.valueOf(trip.getBudget());
         }
+
+        BigDecimal totalExpenses = expenseRepository.findTotalExpensesByTripId(tripId);
+        if (totalExpenses == null) {
+            totalExpenses = BigDecimal.ZERO;
+        }
+
+        BigDecimal remainingBudget = totalBudget.subtract(totalExpenses);
+        return new RemainingBudgetResponse(totalBudget, totalExpenses, remainingBudget);
     }
 
-    private BigDecimal getBudgetAmount(Trip trip) {
-        Budget budget = budgetRepository.findFirstByTripId(trip.getId()).orElse(null);
-        if (budget != null && budget.getTotalBudget() != null) return BigDecimal.valueOf(budget.getTotalBudget());
-        if (trip.getBudget() != null) return BigDecimal.valueOf(trip.getBudget());
-        return BigDecimal.ZERO;
-    }
-
-    private BigDecimal getTotalExpenses(Integer tripId) {
-        BigDecimal total = expenseRepository.findTotalExpensesByTripId(tripId);
-        return total == null ? BigDecimal.ZERO : total;
-    }
-
-    private User resolvePayer(Integer payerId, Trip trip) {
-        if (payerId == null) return trip.getUser();
-        User payer = userRepository.findById(payerId).orElseThrow(() -> new IllegalArgumentException("Invalid payer for trip"));
-        if (!payer.getId().equals(trip.getUser().getId())) throw new IllegalArgumentException("Payer is not connected to this trip");
-        return payer;
-    }
-
-    private void validateRequest(ExpenseCategory category, BigDecimal amount, java.time.LocalDate date) {
-        if (category == null) throw new IllegalArgumentException("Expense category is required");
-        if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) throw new IllegalArgumentException("Expense amount must be positive");
-        if (date == null) throw new IllegalArgumentException("Expense date is required");
-    }
-
-    private Trip findAndValidateTripAccess(Integer tripId, String email) {
-        Trip trip = tripRepository.findById(tripId).orElseThrow(() -> new ResourceNotFoundException("Trip not found with id: " + tripId));
-        if (email != null && trip.getUser() != null && !email.equalsIgnoreCase(trip.getUser().getEmail()))
-            throw new IllegalArgumentException("Unauthorized access to trip with id: " + tripId);
-        return trip;
+    private Trip findAndValidateTripAccess(Integer tripId, String authenticatedUserEmail) {
+        tripAccessService.validateTripAccess(tripId, authenticatedUserEmail);
+        return tripRepository.findById(tripId)
+                .orElseThrow(() -> new ResourceNotFoundException("Trip not found with id: " + tripId));
     }
 
     private ExpenseResponse mapToResponse(Expense e) {

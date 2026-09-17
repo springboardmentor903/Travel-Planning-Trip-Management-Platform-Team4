@@ -23,7 +23,7 @@ public class WeatherService {
     private final DestinationRepository destinationRepository;
     private final RestTemplate restTemplate;
 
-    @Value("${openweather.api.key:${weather.api.key:}}")
+    @Value("${openweather.api.key:${weather.api.key:${WEATHER_API_KEY:}}}")
     private String apiKey;
 
     @Value("${openweather.api.url:${weather.api.url:https://api.openweathermap.org/data/2.5/weather}}")

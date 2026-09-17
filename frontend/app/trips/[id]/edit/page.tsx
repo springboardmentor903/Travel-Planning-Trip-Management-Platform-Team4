@@ -4,6 +4,7 @@ import AppShell from "../../../../components/AppShell";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { toast } from "sonner";
 import { getDestinations, getTrip, updateTrip } from "../../../../lib/api";
 import type { Destination, Trip } from "../../../../lib/types";
 
@@ -44,7 +45,9 @@ export default function EditTripPage() {
         setNotes(tripData.notes || "");
       })
       .catch((err) => {
-        setError(err instanceof Error ? err.message : "Unable to load trip data.");
+        const msg = err instanceof Error ? err.message : "Unable to load trip data.";
+        setError(msg);
+        toast.error(msg);
       })
       .finally(() => {
         setPageLoading(false);
@@ -101,9 +104,12 @@ export default function EditTripPage() {
         notes: notes.trim() ? notes.trim() : null,
       });
 
+      toast.success("Trip updated successfully.");
       router.push(`/trips/${params.id}`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to update trip. Please check details.");
+      const msg = err instanceof Error ? err.message : "Unable to save your trip.";
+      setError(msg);
+      toast.error(msg);
     } finally {
       setSaving(false);
     }
@@ -135,7 +141,7 @@ export default function EditTripPage() {
       {pageLoading ? (
         <div className="max-w-3xl rounded-2xl border border-slate-200 bg-white p-12 text-center text-sm font-semibold text-slate-500">
           <div className="mx-auto mb-3 h-8 w-8 animate-spin rounded-full border-4 border-indigo-600 border-t-transparent" />
-          Loading trip details from backend…
+          Loading trip details…
         </div>
       ) : !trip ? (
         <div className="max-w-3xl rounded-2xl border border-slate-200 bg-white p-12 text-center">

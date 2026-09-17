@@ -595,6 +595,54 @@
 					"response": []
 				},
 				{
+					"name": "Get Admin Analytics",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200 OK or 403 Forbidden\", function () {",
+									"    pm.expect(pm.response.code).to.be.oneOf([200, 403]);",
+									"});",
+									"if (pm.response.code === 200) {",
+									"    pm.test(\"Response contains all 4 analytics components\", function () {",
+									"        var jsonData = pm.response.json();",
+									"        pm.expect(jsonData).to.have.property(\"totalUsers\");",
+									"        pm.expect(jsonData).to.have.property(\"tripAnalytics\");",
+									"        pm.expect(jsonData.tripAnalytics).to.have.property(\"totalTrips\");",
+									"        pm.expect(jsonData.tripAnalytics).to.have.property(\"activeTrips\");",
+									"        pm.expect(jsonData.tripAnalytics).to.have.property(\"completedTrips\");",
+									"        pm.expect(jsonData).to.have.property(\"popularDestinations\");",
+									"        pm.expect(Array.isArray(jsonData.popularDestinations)).to.be.true;",
+									"        pm.expect(jsonData).to.have.property(\"platformStats\");",
+									"        pm.expect(jsonData.platformStats).to.have.property(\"totalExpenses\");",
+									"        pm.expect(jsonData.platformStats).to.have.property(\"totalNotifications\");",
+									"    });",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/admin/analytics",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"admin",
+								"analytics"
+							]
+						},
+						"description": "Access admin analytics dashboard data (Requires ADMINISTRATOR role)."
+					},
+					"response": []
+				},
+				{
 					"name": "List All Users",
 					"event": [
 						{

@@ -34,11 +34,17 @@ public class User {
     @Column(name = "oauth_google")
     private Boolean oauthGoogle = false;
  
+    @Column(name = "active", nullable = false)
+    private Boolean active = true;
+ 
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
  
     @PrePersist
     protected void onCreate() {
         this.createdAt = LocalDateTime.now();
+        if (this.active == null) {
+            this.active = true;
+        }
     }
 }

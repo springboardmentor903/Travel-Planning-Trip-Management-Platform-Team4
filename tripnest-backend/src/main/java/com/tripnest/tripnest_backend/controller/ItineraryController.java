@@ -71,4 +71,48 @@ public class ItineraryController {
         itineraryService.deleteItineraryDay(dayId, userEmail);
         return ResponseEntity.noContent().build();
     }
+
+    @PostMapping("/trips/{tripId}/itinerary/suggestions")
+    public ResponseEntity<com.tripnest.tripnest_backend.dto.ItinerarySuggestionResponse> getItinerarySuggestions(
+            @PathVariable Integer tripId,
+            @RequestBody(required = false) com.tripnest.tripnest_backend.dto.SmartItineraryRequest request,
+            Authentication authentication
+    ) {
+        String userEmail = authentication.getName();
+        com.tripnest.tripnest_backend.dto.ItinerarySuggestionResponse response = itineraryService.getItinerarySuggestions(tripId, request, userEmail);
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/trips/{tripId}/itinerary/apply-suggestions")
+    public ResponseEntity<List<ItineraryDayResponse>> applyItinerarySuggestions(
+            @PathVariable Integer tripId,
+            @RequestBody com.tripnest.tripnest_backend.dto.ApplyItinerarySuggestionsRequest request,
+            Authentication authentication
+    ) {
+        String userEmail = authentication.getName();
+        List<ItineraryDayResponse> response = itineraryService.applyItinerarySuggestions(tripId, request, userEmail);
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/trips/{tripId}/smart-itinerary/generate")
+    public ResponseEntity<com.tripnest.tripnest_backend.dto.SmartItineraryResponse> generateSmartItinerary(
+            @PathVariable Integer tripId,
+            @RequestBody(required = false) com.tripnest.tripnest_backend.dto.SmartItineraryRequest request,
+            Authentication authentication
+    ) {
+        String userEmail = authentication.getName();
+        com.tripnest.tripnest_backend.dto.SmartItineraryResponse response = itineraryService.generateSmartItinerary(tripId, request, userEmail);
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/trips/{tripId}/smart-itinerary/apply")
+    public ResponseEntity<List<ItineraryDayResponse>> applySmartItinerary(
+            @PathVariable Integer tripId,
+            @RequestBody com.tripnest.tripnest_backend.dto.SmartItineraryResponse suggestions,
+            Authentication authentication
+    ) {
+        String userEmail = authentication.getName();
+        List<ItineraryDayResponse> response = itineraryService.applySmartItinerary(tripId, suggestions, userEmail);
+        return ResponseEntity.ok(response);
+    }
 }

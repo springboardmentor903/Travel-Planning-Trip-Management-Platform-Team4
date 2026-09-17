@@ -4,6 +4,8 @@ import com.tripnest.tripnest_backend.entity.ItineraryDay;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import java.util.List;
 import java.util.Optional;
 
@@ -19,4 +21,9 @@ public interface ItineraryDayRepository extends JpaRepository<ItineraryDay, Inte
     Optional<ItineraryDay> findByTripIdAndDayNumberAndTripUserEmail(Integer tripId, Integer dayNumber, String email);
 
     boolean existsByTripIdAndDayNumber(Integer tripId, Integer dayNumber);
+
+    Optional<ItineraryDay> findByTripIdAndDayNumber(Integer tripId, Integer dayNumber);
+
+    @Query("SELECT MAX(d.dayNumber) FROM ItineraryDay d WHERE d.trip.id = :tripId")
+    Optional<Integer> findMaxDayNumberByTripId(@Param("tripId") Integer tripId);
 }

@@ -6,12 +6,14 @@ import type { Activity, CreateActivityRequest } from "../../lib/types";
 export default function ActivityModal({
   isOpen,
   initialData,
+  defaultDate,
   onSave,
   onClose,
   isSaving,
 }: {
   isOpen: boolean;
   initialData?: Activity | null;
+  defaultDate?: string | null;
   onSave: (data: CreateActivityRequest) => Promise<void>;
   onClose: () => void;
   isSaving: boolean;
@@ -36,12 +38,12 @@ export default function ActivityModal({
       setName("");
       setDescription("");
       setLocation("");
-      setStartTime("");
+      setStartTime(defaultDate ? `${defaultDate}T09:00` : "");
       setEndTime("");
     }
     setError("");
     setFieldErrors({});
-  }, [initialData, isOpen]);
+  }, [initialData, defaultDate, isOpen]);
 
   if (!isOpen) return null;
 
@@ -66,13 +68,23 @@ export default function ActivityModal({
 
     if (!validate()) return;
 
+    let formattedStart = startTime ? startTime.trim() : null;
+    let formattedEnd = endTime ? endTime.trim() : null;
+
+    if (formattedStart && formattedStart.length === 16) {
+      formattedStart = `${formattedStart}:00`;
+    }
+    if (formattedEnd && formattedEnd.length === 16) {
+      formattedEnd = `${formattedEnd}:00`;
+    }
+
     try {
       await onSave({
         name: name.trim(),
         description: description.trim() ? description.trim() : null,
         location: location.trim() ? location.trim() : null,
-        startTime: startTime ? startTime : null,
-        endTime: endTime ? endTime : null,
+        startTime: formattedStart,
+        endTime: formattedEnd,
       });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to save activity.");
