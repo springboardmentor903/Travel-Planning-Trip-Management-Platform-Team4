@@ -37,9 +37,26 @@ public class UserService {
     private static final String DEFAULT_ROLE = "TRAVELER";
 
     public AuthResponse registerUser(RegisterRequest request) {
+        String cleanEmail = request.getEmail().trim().toLowerCase();
+        User existingUser = userRepository.findByEmail(cleanEmail).orElse(null);
 
-        if (userRepository.existsByEmail(request.getEmail())) {
-            throw new RuntimeException("Email is already registered: " + request.getEmail());
+        if (existingUser != null) {
+            if (existingUser.getPasswordHash() != null && !existingUser.getPasswordHash().contains("INVITED_PENDING_")) {
+                throw new RuntimeException("Email is already registered: " + request.getEmail());
+            }
+            existingUser.setName(request.getName().trim());
+            existingUser.setPasswordHash(passwordEncoder.encode(request.getPassword()));
+            existingUser.setActive(true);
+            User savedUser = userRepository.save(existingUser);
+
+            return new AuthResponse(
+                    savedUser.getId(),
+                    savedUser.getName(),
+                    savedUser.getEmail(),
+                    savedUser.getRole() != null ? savedUser.getRole().getName() : null,
+                    "User registered successfully",
+                    null
+            );
         }
 
         Role defaultRole = roleRepository.findByName(DEFAULT_ROLE)
@@ -47,11 +64,12 @@ public class UserService {
                         "Default role not found. Make sure roles are seeded."));
 
         User user = new User();
-        user.setName(request.getName());
-        user.setEmail(request.getEmail());
+        user.setName(request.getName().trim());
+        user.setEmail(cleanEmail);
         user.setPasswordHash(passwordEncoder.encode(request.getPassword()));
         user.setRole(defaultRole);
         user.setOauthGoogle(false);
+        user.setActive(true);
 
         User savedUser = userRepository.save(user);
 

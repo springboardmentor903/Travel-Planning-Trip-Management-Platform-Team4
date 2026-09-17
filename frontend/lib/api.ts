@@ -1,3 +1,4 @@
+import { toast } from "sonner";
 import type {
   Activity,
   AdminAnalyticsResponse,
@@ -24,9 +25,14 @@ import type {
   MembershipRole,
   Notification,
   PageResponse,
+  PackingCategory,
+  PackingChecklistResponse,
+  PackingItem,
   PlaceInfo,
   RegisterRequest,
   RemainingBudget,
+  SettlementSummaryResponse,
+  SettlementTransaction,
   SmartItineraryRequest,
   Trip,
   TripAdminDTO,
@@ -70,11 +76,6 @@ export async function apiFetch<T>(path: string, options: RequestInit = {}): Prom
 
   if (!response.ok) {
     if (response.status === 401 && typeof window !== "undefined") {
-      // Only clear the session and redirect when the 401 is a genuine token
-      // authentication failure. Check that the response body signals an auth
-      // problem (missing/invalid token) rather than some other server-side 401
-      // (e.g. a misconfigured or missing endpoint that Spring Security rejects
-      // before even reaching a controller).
       const isAuthFailure =
         typeof payload === "object" && payload !== null
           ? ("error" in payload &&
@@ -95,7 +96,6 @@ export async function apiFetch<T>(path: string, options: RequestInit = {}): Prom
               payload.toLowerCase().includes("unauthorized") ||
               payload.toLowerCase().includes("log in"));
 
-      // No payload at all (empty body 401) → also treat as auth failure
       const emptyBody = payload === null || payload === "" || payload === undefined;
 
       if (isAuthFailure || emptyBody) {
@@ -105,20 +105,26 @@ export async function apiFetch<T>(path: string, options: RequestInit = {}): Prom
           window.location.pathname !== "/login" &&
           window.location.pathname !== "/register"
         ) {
+          toast.error("Session expired. Please sign in again.");
           window.location.href = "/login";
         }
       }
     }
 
-    let message = `Request failed with status ${response.status}`;
+    let message = "An error occurred while processing your request.";
     if (typeof payload === "object" && payload) {
-      if ("message" in payload && payload.message) {
-        message = String(payload.message);
-      } else if ("error" in payload && payload.error) {
-        message = String(payload.error);
+      if ("message" in payload && payload.message && typeof payload.message === "string") {
+        message = payload.message;
+      } else if ("error" in payload && payload.error && typeof payload.error === "string") {
+        message = payload.error;
       }
-    } else if (typeof payload === "string" && payload.trim()) {
+    } else if (typeof payload === "string" && payload.trim() && !payload.includes("Exception:") && !payload.includes("at com.")) {
       message = payload.trim();
+    }
+
+    // Clean up Java stack traces or internal server error dumps if present
+    if (message.includes("Internal Server Error") || message.includes("java.lang") || message.includes("org.springframework")) {
+      message = "Something went wrong on the server. Please try again.";
     }
 
     const error = new Error(message) as ApiError;
@@ -323,6 +329,68 @@ export async function getRemainingBudget(
   tripId: number | string
 ): Promise<RemainingBudget> {
   return apiFetch<RemainingBudget>(`/trips/${tripId}/expenses/remaining-budget`);
+}
+
+export async function getExpenseSettlement(
+  tripId: number | string
+): Promise<SettlementSummaryResponse> {
+  return apiFetch<SettlementSummaryResponse>(`/trips/${tripId}/settlement`);
+}
+
+export async function markSettlementAsSettled(
+  tripId: number | string,
+  settlementId: number | string
+): Promise<SettlementTransaction> {
+  return apiFetch<SettlementTransaction>(`/trips/${tripId}/settlements/${settlementId}/settle`, {
+    method: "PATCH",
+  });
+}
+
+/* --- Smart Packing Checklist Helper APIs --- */
+
+export async function getPackingChecklist(
+  tripId: number | string
+): Promise<PackingChecklistResponse> {
+  return apiFetch<PackingChecklistResponse>(`/trips/${tripId}/packing`);
+}
+
+export async function regeneratePackingChecklist(
+  tripId: number | string
+): Promise<PackingChecklistResponse> {
+  return apiFetch<PackingChecklistResponse>(`/trips/${tripId}/packing/regenerate`, {
+    method: "POST",
+  });
+}
+
+export async function addCustomPackingItem(
+  tripId: number | string,
+  name: string,
+  category: PackingCategory
+): Promise<PackingItem> {
+  return apiFetch<PackingItem>(`/trips/${tripId}/packing/items`, {
+    method: "POST",
+    body: JSON.stringify({ name, category }),
+  });
+}
+
+export async function updatePackingItem(
+  tripId: number | string,
+  itemId: number | string,
+  packed: boolean
+): Promise<PackingItem> {
+  return apiFetch<PackingItem>(`/trips/${tripId}/packing/items/${itemId}`, {
+    method: "PATCH",
+    body: JSON.stringify({ packed }),
+  });
+}
+
+export async function deletePackingItem(
+  tripId: number | string,
+  itemId: number | string
+): Promise<void> {
+  return apiFetch<void>(`/trips/${tripId}/packing/items/${itemId}`, {
+    method: "DELETE",
+  });
 }
 
 /* --- Notification Helper APIs --- */

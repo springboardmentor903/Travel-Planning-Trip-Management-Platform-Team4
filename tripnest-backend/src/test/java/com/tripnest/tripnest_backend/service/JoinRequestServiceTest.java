@@ -44,6 +44,9 @@ class JoinRequestServiceTest {
     @Mock
     private TripAccessService tripAccessService;
 
+    @Mock
+    private NotificationService notificationService;
+
     @InjectMocks
     private JoinRequestService joinRequestService;
 
@@ -56,12 +59,12 @@ class JoinRequestServiceTest {
     @BeforeEach
     void setUp() {
         Role role = new Role(1, "TRAVELER");
-        owner = new User(1, "Owner", "owner@example.com", "hash", role, false, LocalDateTime.now());
-        requester = new User(2, "Requester", "requester@example.com", "hash", role, false, LocalDateTime.now());
-        admin = new User(3, "Admin", "admin@example.com", "hash", role, false, LocalDateTime.now());
+        owner = new User(1, "Owner", "owner@example.com", "hash", role, false, true, LocalDateTime.now());
+        requester = new User(2, "Requester", "requester@example.com", "hash", role, false, true, LocalDateTime.now());
+        admin = new User(3, "Admin", "admin@example.com", "hash", role, false, true, LocalDateTime.now());
 
-        Destination destination = new Destination(1, "Goa", "India", "Goa", "Desc", "url", "Beach");
-        trip = new Trip(10, "Goa Friends Trip", owner, destination, LocalDate.now().plusDays(1), LocalDate.now().plusDays(5), 1000.0, "Notes", LocalDateTime.now());
+        Destination destination = new Destination(1, "Goa", "India", "Goa", "Desc", "url", "Beach", 0.0, 0.0, true, 0.0, "All");
+        trip = new Trip(10, "Goa Friends Trip", owner, destination, LocalDate.now().plusDays(1), LocalDate.now().plusDays(5), 1000.0, "Notes", TripStatus.PLANNED, LocalDateTime.now());
 
         pendingRequest = new JoinRequest(100, trip, requester, JoinRequestStatus.PENDING, LocalDateTime.now(), null, null);
     }

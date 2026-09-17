@@ -6,5 +6,6 @@ public enum NotificationType {
     JOIN_REQUEST_APPROVED,
     JOIN_REQUEST_REJECTED,
     EXPENSE_ADDED,
-    TRIP_UPDATED
+    TRIP_UPDATED,
+    TRIP_REMINDER
 }

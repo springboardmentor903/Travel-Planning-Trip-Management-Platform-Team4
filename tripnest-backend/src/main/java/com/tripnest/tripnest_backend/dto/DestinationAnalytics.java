@@ -10,5 +10,5 @@ import lombok.NoArgsConstructor;
 public class DestinationAnalytics {
     private Integer destinationId;
     private String destinationName;
-    private long tripCount;
+    private Long tripCount;
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { toast } from "sonner";
 import type { Notification } from "../../lib/types";
 
 interface NotificationPanelProps {
@@ -64,6 +65,7 @@ export default function NotificationPanel({
   const markAllRead = () => {
     const allIds = new Set(displayNotifications.map((n) => n.id));
     setReadIds(allIds);
+    toast.success("All notifications marked as read.");
   };
 
   const toggleRead = (id: number) => {
@@ -183,9 +185,9 @@ export default function NotificationPanel({
       ) : filteredList.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-slate-200 py-12 text-center">
           <span className="text-4xl">🔔</span>
-          <h3 className="mt-3 text-base font-black text-slate-900">Inbox is empty</h3>
+          <h3 className="mt-3 text-base font-black text-slate-900">No notifications.</h3>
           <p className="mt-1 text-xs text-slate-500 max-w-sm mx-auto">
-            You are all caught up! Departure alerts and itinerary updates will automatically appear here.
+            You're all caught up.
           </p>
         </div>
       ) : (

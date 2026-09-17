@@ -4,6 +4,7 @@ import com.tripnest.tripnest_backend.entity.Activity;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -17,4 +18,6 @@ public interface ActivityRepository extends JpaRepository<Activity, Integer> {
     Optional<Activity> findByIdAndItineraryDayTripUserEmail(Integer id, String email);
 
     Optional<Activity> findByIdAndItineraryDayIdAndItineraryDayTripUserEmail(Integer id, Integer itineraryDayId, String email);
+
+    List<Activity> findByStartTimeGreaterThanEqualAndStartTimeLessThan(LocalDateTime from, LocalDateTime to);
 }

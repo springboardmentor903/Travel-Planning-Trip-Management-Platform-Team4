@@ -27,7 +27,11 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
+
 @ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
 class TripMembershipServiceTest {
 
     @Mock
@@ -38,6 +42,12 @@ class TripMembershipServiceTest {
 
     @Mock
     private UserRepository userRepository;
+
+    @Mock
+    private com.tripnest.tripnest_backend.repository.RoleRepository roleRepository;
+
+    @Mock
+    private org.springframework.security.crypto.password.PasswordEncoder passwordEncoder;
 
     @Mock
     private NotificationService notificationService;

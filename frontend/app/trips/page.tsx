@@ -4,9 +4,11 @@ import AppShell from "../../components/AppShell";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useMemo, useState } from "react";
+import { toast } from "sonner";
 import { deleteTrip, getTrips } from "../../lib/api";
 import type { Trip, TripStatus } from "../../lib/types";
 import TripStatusBadge from "../../components/trips/TripStatusBadge";
+import { useCurrency } from "../../lib/currency";
 
 export default function TripsPage() {
   return (
@@ -19,17 +21,18 @@ export default function TripsPage() {
 }
 
 function TripsContent() {
+  const { format: formatBudget } = useCurrency();
   const searchParams = useSearchParams();
   const statusParam = searchParams.get("status");
 
   const [trips, setTrips] = useState<Trip[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [notification, setNotification] = useState<{ type: "success" | "error"; message: string } | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Trip | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedFilter, setSelectedFilter] = useState<"ALL" | TripStatus>("ALL");
+  const [notification, setNotification] = useState<{ type: "success" | "error"; message: string } | null>(null);
 
   useEffect(() => {
     if (statusParam === "ACTIVE" || statusParam === "PLANNED" || statusParam === "COMPLETED") {
@@ -44,7 +47,9 @@ function TripsContent() {
       const data = await getTrips();
       setTrips(data || []);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Unable to load trips. Please try again.");
+      const msg = err instanceof Error ? err.message : "Unable to load trips. Please try again.";
+      setError(msg);
+      toast.error(msg);
     } finally {
       setLoading(false);
     }
@@ -57,17 +62,13 @@ function TripsContent() {
   const handleDelete = async () => {
     if (!deleteTarget) return;
     setIsDeleting(true);
-    setNotification(null);
     try {
       await deleteTrip(deleteTarget.id);
-      setNotification({ type: "success", message: `Trip "${deleteTarget.title}" deleted successfully.` });
+      toast.success("Trip deleted.");
       setDeleteTarget(null);
       await loadTrips();
     } catch (err) {
-      setNotification({
-        type: "error",
-        message: err instanceof Error ? err.message : "Failed to delete trip.",
-      });
+      toast.error(err instanceof Error ? err.message : "Failed to delete trip.");
     } finally {
       setIsDeleting(false);
     }
@@ -362,6 +363,7 @@ function TripsContent() {
 }
 
 function TripCard({ trip, onDeleteClick }: { trip: Trip; onDeleteClick: () => void }) {
+  const { format: formatBudget } = useCurrency();
   const durationDays = useMemo(() => {
     if (!trip.startDate || !trip.endDate) return null;
     const start = new Date(`${trip.startDate}T00:00:00`).getTime();
@@ -569,28 +571,28 @@ function EmptyState({
         {isFiltered ? "🔍" : "🧳"}
       </div>
       <h3 className="mt-4 text-xl font-black text-slate-900">
-        {isFiltered ? "No matching trips found" : "No trips planned yet"}
+        {isFiltered ? "No matching trips found" : "No trips yet."}
       </h3>
       <p className="mt-1.5 text-sm text-slate-500 max-w-md mx-auto">
         {isFiltered
           ? "No trips matched your search or status filter criteria. Try adjusting your search query."
-          : "Get started by planning your very first vacation, business trip, or weekend getaway."}
+          : "Get started by planning your very first journey."}
       </p>
 
       <div className="mt-6 flex items-center justify-center gap-3">
         {isFiltered ? (
           <button
             onClick={onReset}
-            className="rounded-xl border border-slate-300 bg-white px-5 py-2.5 text-xs font-bold text-slate-700 shadow-sm hover:bg-slate-50"
+            className="rounded-xl border border-slate-300 bg-white px-5 py-2.5 text-xs font-bold text-slate-700 shadow-sm hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
           >
             Clear Filters
           </button>
         ) : (
           <Link
             href="/trips/new"
-            className="rounded-xl bg-indigo-600 px-6 py-3 text-xs font-extrabold text-white shadow-lg shadow-indigo-200 transition hover:bg-indigo-700"
+            className="rounded-xl bg-indigo-600 px-6 py-3 text-xs font-extrabold text-white shadow-lg shadow-indigo-200 transition hover:bg-indigo-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 active:scale-95"
           >
-            + Create New Trip
+            Plan your first trip
           </Link>
         )}
       </div>
@@ -605,12 +607,4 @@ function formatDate(value: string) {
     month: "short",
     year: "numeric",
   });
-}
-
-function formatBudget(value: number) {
-  return new Intl.NumberFormat("en-IN", {
-    style: "currency",
-    currency: "INR",
-    maximumFractionDigits: 0,
-  }).format(value);
 }

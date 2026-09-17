@@ -7,6 +7,7 @@ import com.tripnest.tripnest_backend.entity.Destination;
 import com.tripnest.tripnest_backend.entity.ItineraryDay;
 import com.tripnest.tripnest_backend.entity.Role;
 import com.tripnest.tripnest_backend.entity.Trip;
+import com.tripnest.tripnest_backend.entity.TripStatus;
 import com.tripnest.tripnest_backend.entity.User;
 import com.tripnest.tripnest_backend.exception.ResourceNotFoundException;
 import com.tripnest.tripnest_backend.repository.ItineraryDayRepository;
@@ -49,9 +50,9 @@ class ItineraryServiceTest {
     @BeforeEach
     void setUp() {
         Role role = new Role(1, "TRAVELER");
-        user = new User(10, "Test User", "user@example.com", "passwordHash", role, false, LocalDateTime.now());
-        Destination destination = new Destination(1, "Paris", "France", "Paris", "City of Light", "http://example.com/paris.jpg", "City");
-        trip = new Trip(100, "Paris Trip", user, destination, LocalDate.now().plusDays(1), LocalDate.now().plusDays(10), 1500.0, "Notes", LocalDateTime.now());
+        user = new User(10, "Test User", "user@example.com", "passwordHash", role, false, true, LocalDateTime.now());
+        Destination destination = new Destination(1, "Paris", "France", "Paris", "City of Light", "http://example.com/paris.jpg", "City", 0.0, 0.0, true, 0.0, "All");
+        trip = new Trip(100, "Paris Trip", user, destination, LocalDate.now().plusDays(1), LocalDate.now().plusDays(10), 1500.0, "Notes", TripStatus.PLANNED, LocalDateTime.now());
         itineraryDay = new ItineraryDay(1, trip, 1, LocalDate.now().plusDays(2), "Day 1 Arrival", "Arrive in Paris");
     }
 

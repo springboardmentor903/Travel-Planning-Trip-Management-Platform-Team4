@@ -4,6 +4,7 @@ import com.tripnest.tripnest_backend.dto.NotificationResponse;
 import com.tripnest.tripnest_backend.dto.NotificationUnreadCountResponse;
 import com.tripnest.tripnest_backend.entity.Notification;
 import com.tripnest.tripnest_backend.entity.NotificationType;
+import com.tripnest.tripnest_backend.entity.Trip;
 import com.tripnest.tripnest_backend.entity.User;
 import com.tripnest.tripnest_backend.exception.ResourceNotFoundException;
 import com.tripnest.tripnest_backend.repository.NotificationRepository;
@@ -122,6 +123,13 @@ public class NotificationService {
                 .orElseThrow(() -> new ResourceNotFoundException("Notification not found with id: " + notificationId));
 
         notificationRepository.delete(notification);
+    }
+
+    @Transactional
+    public void notifyTripParticipants(Trip trip, String message, String key, boolean sendEmail) {
+        if (trip != null && trip.getUser() != null) {
+            createNotification(trip.getUser(), "Trip Reminder", message, NotificationType.TRIP_REMINDER, trip.getId());
+        }
     }
 
     private NotificationResponse mapToResponse(Notification n) {

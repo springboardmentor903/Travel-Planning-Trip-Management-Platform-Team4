@@ -174,6 +174,72 @@ export type RemainingBudget = {
   remainingBudget: number;
 };
 
+export type MemberBalance = {
+  userId: number;
+  userName: string;
+  userEmail: string;
+  amountPaid: number;
+  shouldPay: number;
+  netBalance: number;
+};
+
+export type SettlementTransaction = {
+  id: number;
+  tripId: number;
+  fromUserId: number;
+  fromUserName: string;
+  fromUserEmail: string;
+  toUserId: number;
+  toUserName: string;
+  toUserEmail: string;
+  amount: number;
+  status: "PENDING" | "SETTLED";
+  createdAt: string;
+  settledAt?: string | null;
+};
+
+export type SettlementSummaryResponse = {
+  tripId: number;
+  totalExpenses: number;
+  memberCount: number;
+  equalShare: number;
+  currency: string;
+  memberBalances: MemberBalance[];
+  pendingSettlements: SettlementTransaction[];
+  settledTransactions: SettlementTransaction[];
+};
+
+export type PackingCategory =
+  | "CLOTHING"
+  | "RAIN_PROTECTION"
+  | "FOOTWEAR"
+  | "HEALTH"
+  | "DOCUMENTS"
+  | "ELECTRONICS"
+  | "ACCESSORIES"
+  | "OTHER";
+
+export type PackingItem = {
+  id: number;
+  tripId: number;
+  name: string;
+  category: PackingCategory;
+  packed: boolean;
+  custom: boolean;
+  reason?: string | null;
+};
+
+export type PackingChecklistResponse = {
+  tripId: number;
+  weatherCondition?: string | null;
+  temperature?: number | null;
+  weatherAvailable: boolean;
+  weatherSummary: string;
+  totalItems: number;
+  packedItems: number;
+  items: PackingItem[];
+};
+
 export type NotificationType =
   | "MEMBER_ADDED"
   | "JOIN_REQUEST"

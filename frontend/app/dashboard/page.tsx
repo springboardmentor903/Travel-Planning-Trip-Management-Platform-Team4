@@ -6,8 +6,10 @@ import { useEffect, useMemo, useState } from "react";
 import { getDestinations, getTrips } from "../../lib/api";
 import type { Destination, Trip, TripStatus, User } from "../../lib/types";
 import TripStatusBadge from "../../components/trips/TripStatusBadge";
+import { useCurrency } from "../../lib/currency";
 
 export default function DashboardPage() {
+  const { format: formatBudget } = useCurrency();
   const [user, setUser] = useState<User | null>(null);
   const [destinations, setDestinations] = useState<Destination[]>([]);
   const [trips, setTrips] = useState<Trip[]>([]);
@@ -180,9 +182,8 @@ export default function DashboardPage() {
           ) : (
             <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
               {destinations.slice(0, 6).map((dest) => (
-                <Link
+                <article
                   key={dest.id}
-                  href={`/destinations/${dest.id}`}
                   className="group relative flex flex-col justify-between overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm transition duration-300 hover:-translate-y-1 hover:border-indigo-300 hover:shadow-lg"
                 >
                   <div className="relative h-32 w-full overflow-hidden bg-slate-900">
@@ -215,12 +216,21 @@ export default function DashboardPage() {
                       {dest.description || "Discover points of interest and live weather forecast."}
                     </p>
                   </div>
-                  <div className="border-t border-slate-100 bg-slate-50/50 px-4 py-2.5 text-right">
-                    <span className="text-[11px] font-extrabold text-indigo-600 group-hover:translate-x-0.5 transition-transform inline-block">
+                  <div className="flex items-center justify-between border-t border-slate-100 bg-slate-50/50 px-4 py-2.5">
+                    <Link
+                      href={`/destinations/${dest.id}`}
+                      className="text-[11px] font-extrabold text-indigo-600 hover:text-indigo-800 transition"
+                    >
                       View Details →
-                    </span>
+                    </Link>
+                    <Link
+                      href={`/trips/new?destinationId=${dest.id}`}
+                      className="rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-bold text-slate-700 shadow-xs hover:bg-indigo-50 hover:text-indigo-700 hover:border-indigo-200 transition"
+                    >
+                      + Plan Trip
+                    </Link>
                   </div>
-                </Link>
+                </article>
               ))}
             </div>
           )}
@@ -393,12 +403,4 @@ function formatDate(value: string) {
     month: "short",
     year: "numeric",
   });
-}
-
-function formatBudget(value: number) {
-  return new Intl.NumberFormat("en-IN", {
-    style: "currency",
-    currency: "INR",
-    maximumFractionDigits: 0,
-  }).format(value);
 }

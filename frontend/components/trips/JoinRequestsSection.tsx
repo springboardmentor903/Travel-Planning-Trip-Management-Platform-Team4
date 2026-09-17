@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { toast } from "sonner";
 import { approveJoinRequest, getPendingJoinRequests, rejectJoinRequest } from "../../lib/api";
 import type { JoinRequestResponse } from "../../lib/types";
 
@@ -18,7 +19,6 @@ export default function JoinRequestsSection({
   const [requests, setRequests] = useState<JoinRequestResponse[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [successMsg, setSuccessMsg] = useState("");
   const [processingId, setProcessingId] = useState<number | null>(null);
 
   const fetchRequests = async () => {
@@ -47,14 +47,15 @@ export default function JoinRequestsSection({
   const handleApprove = async (requestId: number, userName: string) => {
     setProcessingId(requestId);
     setError("");
-    setSuccessMsg("");
     try {
       await approveJoinRequest(tripId, requestId);
-      setSuccessMsg(`Approved join request for ${userName}. They are now a trip member.`);
+      toast.success(`Approved join request for ${userName}.`);
       await fetchRequests();
       if (onMemberAdded) onMemberAdded();
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Failed to approve join request.");
+      const msg = err instanceof Error ? err.message : "Failed to approve join request.";
+      setError(msg);
+      toast.error(msg);
     } finally {
       setProcessingId(null);
     }
@@ -63,13 +64,14 @@ export default function JoinRequestsSection({
   const handleReject = async (requestId: number, userName: string) => {
     setProcessingId(requestId);
     setError("");
-    setSuccessMsg("");
     try {
       await rejectJoinRequest(tripId, requestId);
-      setSuccessMsg(`Rejected join request for ${userName}.`);
+      toast.success(`Rejected join request for ${userName}.`);
       await fetchRequests();
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Failed to reject join request.");
+      const msg = err instanceof Error ? err.message : "Failed to reject join request.";
+      setError(msg);
+      toast.error(msg);
     } finally {
       setProcessingId(null);
     }
@@ -91,18 +93,6 @@ export default function JoinRequestsSection({
           Refresh
         </button>
       </div>
-
-      {successMsg && (
-        <div className="mb-6 flex items-center justify-between rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm font-semibold text-emerald-800">
-          <span>{successMsg}</span>
-          <button
-            onClick={() => setSuccessMsg("")}
-            className="text-xs font-bold uppercase tracking-wider opacity-75 hover:opacity-100"
-          >
-            Dismiss
-          </button>
-        </div>
-      )}
 
       {error && (
         <div className="mb-6 flex items-center justify-between rounded-xl border border-red-200 bg-red-50 p-4 text-sm font-semibold text-red-700">

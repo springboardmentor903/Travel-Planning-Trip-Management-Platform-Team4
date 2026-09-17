@@ -17,7 +17,7 @@ declare global {
         id: {
           initialize: (config: any) => void;
           renderButton: (parent: HTMLElement, options: any) => void;
-          prompt: () => void;
+          prompt: (momentListener?: (notification: any) => void) => void;
         };
       };
     };
@@ -33,31 +33,73 @@ export default function GoogleSignInButton({
   const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
 
   useEffect(() => {
-    if (!clientId) return;
+    // Suppress Google Identity Services (GSI) FedCM internal abort error overlay in Next.js dev mode
+    const originalConsoleError = console.error;
+    console.error = (...args: any[]) => {
+      const msg = args.map((a) => (typeof a === "object" ? JSON.stringify(a) : String(a))).join(" ");
+      if (
+        msg.includes("[GSI_LOGGER]") ||
+        msg.includes("FedCM") ||
+        msg.includes("credentials.get") ||
+        msg.includes("NotAllowedError")
+      ) {
+        return;
+      }
+      originalConsoleError.apply(console, args);
+    };
 
-    const scriptId = "google-gsi-script";
-    let script = document.getElementById(scriptId) as HTMLScriptElement;
+    const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
+      const reasonMsg = String(event.reason?.message || event.reason || "");
+      if (
+        reasonMsg.includes("signal is aborted") ||
+        reasonMsg.includes("FedCM") ||
+        reasonMsg.includes("credentials.get") ||
+        reasonMsg.includes("NotAllowedError") ||
+        event.reason?.name === "AbortError" ||
+        event.reason?.name === "NotAllowedError"
+      ) {
+        event.preventDefault();
+      }
+    };
 
-    if (!script) {
-      script = document.createElement("script");
-      script.id = scriptId;
-      script.src = "https://accounts.google.com/gsi/client";
-      script.async = true;
-      script.defer = true;
-      script.onload = () => initGoogleSignIn();
-      document.body.appendChild(script);
-    } else if (window.google) {
-      initGoogleSignIn();
+    window.addEventListener("unhandledrejection", handleUnhandledRejection);
+
+    if (clientId) {
+      const scriptId = "google-gsi-script";
+      let script = document.getElementById(scriptId) as HTMLScriptElement;
+
+      if (!script) {
+        script = document.createElement("script");
+        script.id = scriptId;
+        script.src = "https://accounts.google.com/gsi/client";
+        script.async = true;
+        script.defer = true;
+        script.onload = () => initGoogleSignIn();
+        document.body.appendChild(script);
+      } else if (window.google) {
+        initGoogleSignIn();
+      }
     }
+
+    return () => {
+      console.error = originalConsoleError;
+      window.removeEventListener("unhandledrejection", handleUnhandledRejection);
+    };
   }, [clientId]);
 
   const initGoogleSignIn = () => {
     if (!window.google || !clientId) return;
 
-    window.google.accounts.id.initialize({
-      client_id: clientId,
-      callback: handleCredentialResponse,
-    });
+    try {
+      window.google.accounts.id.initialize({
+        client_id: clientId,
+        callback: handleCredentialResponse,
+        use_fedcm_for_prompt: false,
+        auto_select: false,
+      });
+    } catch {
+      // Ignore Google GSI initialization logger warnings on local dev environments
+    }
   };
 
   const handleCredentialResponse = async (response: any) => {
@@ -79,7 +121,15 @@ export default function GoogleSignInButton({
 
   const handleClick = () => {
     if (clientId && window.google) {
-      window.google.accounts.id.prompt();
+      try {
+        window.google.accounts.id.prompt((notification: any) => {
+          if (notification && typeof notification.isNotDisplayed === "function" && notification.isNotDisplayed()) {
+            onError("Google Sign-In popup was blocked or closed. Please try again or use Email Sign In.");
+          }
+        });
+      } catch {
+        onError("Google Sign-In requires NEXT_PUBLIC_GOOGLE_CLIENT_ID to be configured. Please use Email Sign In below.");
+      }
     } else {
       // Demo / Fallback notice if Google Client ID is not configured
       onError("Google Sign-In requires NEXT_PUBLIC_GOOGLE_CLIENT_ID to be configured in your environment variables. Please use Email Sign In below.");

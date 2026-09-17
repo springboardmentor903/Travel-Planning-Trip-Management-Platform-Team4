@@ -14,4 +14,12 @@ public class TripAnalytics {
     private long completedTrips;
     private long cancelledTrips;
     private double averageBudget;
+
+    public long getActiveTrips() {
+        return ongoingTrips;
+    }
+
+    public long getPlannedTrips() {
+        return upcomingTrips;
+    }
 }

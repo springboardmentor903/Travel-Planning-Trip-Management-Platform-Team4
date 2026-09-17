@@ -15,6 +15,7 @@ import com.tripnest.tripnest_backend.exception.UnauthorizedTripMembershipOperati
 import com.tripnest.tripnest_backend.repository.TripMembershipRepository;
 import com.tripnest.tripnest_backend.repository.TripRepository;
 import com.tripnest.tripnest_backend.repository.UserRepository;
+import com.tripnest.tripnest_backend.repository.RoleRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -28,6 +29,8 @@ public class TripMembershipService {
     private final TripMembershipRepository tripMembershipRepository;
     private final TripRepository tripRepository;
     private final UserRepository userRepository;
+    private final RoleRepository roleRepository;
+    private final org.springframework.security.crypto.password.PasswordEncoder passwordEncoder;
     private final NotificationService notificationService;
 
     @Transactional
@@ -42,11 +45,39 @@ public class TripMembershipService {
             throw new UnauthorizedTripMembershipOperationException("Only trip owners or group admins can add members to this trip");
         }
 
-        User targetUser = userRepository.findByEmail(request.getEmail())
-                .orElseThrow(() -> new ResourceNotFoundException("User not found with email: " + request.getEmail()));
+        String inputEmail = request.getEmail() != null ? request.getEmail().trim().toLowerCase() : "";
+        if (inputEmail.isEmpty()) {
+            throw new IllegalArgumentException("Email address cannot be empty");
+        }
+
+        User targetUser = userRepository.findByEmail(inputEmail)
+                .orElseGet(() -> {
+                    com.tripnest.tripnest_backend.entity.Role travelerRole = roleRepository.findByName("TRAVELER")
+                            .orElseGet(() -> roleRepository.save(new com.tripnest.tripnest_backend.entity.Role(null, "TRAVELER")));
+
+                    String nameFromEmail = inputEmail.split("@")[0];
+                    if (!nameFromEmail.isEmpty()) {
+                        nameFromEmail = Character.toUpperCase(nameFromEmail.charAt(0)) + nameFromEmail.substring(1);
+                    } else {
+                        nameFromEmail = "Traveler";
+                    }
+
+                    User newUser = new User();
+                    newUser.setEmail(inputEmail);
+                    newUser.setName(nameFromEmail);
+                    newUser.setPasswordHash(passwordEncoder.encode("INVITED_PENDING_" + java.util.UUID.randomUUID()));
+                    newUser.setRole(travelerRole);
+                    newUser.setOauthGoogle(false);
+                    newUser.setActive(true);
+                    return userRepository.save(newUser);
+                });
+
+        if (targetUser == null || targetUser.getId() == null) {
+            throw new ResourceNotFoundException("User not found for email " + inputEmail);
+        }
 
         if (tripMembershipRepository.existsByTripIdAndUserId(tripId, targetUser.getId())) {
-            throw new AlreadyTripMemberException("User with email " + request.getEmail() + " is already a member of this trip");
+            throw new AlreadyTripMemberException("User with email " + inputEmail + " is already a member of this trip");
         }
 
         MembershipRole role = request.getRole() != null ? request.getRole() : MembershipRole.MEMBER;

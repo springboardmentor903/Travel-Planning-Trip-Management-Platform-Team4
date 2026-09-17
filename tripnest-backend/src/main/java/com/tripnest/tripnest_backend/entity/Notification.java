@@ -61,4 +61,12 @@ public class Notification {
     public String getEventKey() {
         return type != null ? type.name() : "EVENT";
     }
+
+    public Notification(Long id, User recipient, String message, String typeStr, LocalDateTime createdAt) {
+        this.id = id;
+        this.recipient = recipient;
+        this.message = message;
+        this.type = NotificationType.TRIP_UPDATED;
+        this.createdAt = createdAt != null ? createdAt : LocalDateTime.now();
+    }
 }

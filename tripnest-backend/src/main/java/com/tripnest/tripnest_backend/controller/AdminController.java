@@ -37,7 +37,7 @@ public class AdminController {
 
     private final AdminService adminService;
 
-    @GetMapping("/analytics")
+    @GetMapping("/analytics-summary")
     public ResponseEntity<AdminAnalyticsResponse> getAnalytics() {
         return ResponseEntity.ok(adminService.getAnalytics());
     }

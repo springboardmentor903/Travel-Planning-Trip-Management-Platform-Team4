@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { toast } from "sonner";
 import {
   createExpense,
   deleteExpense,
@@ -11,6 +12,7 @@ import {
   updateTrip,
 } from "../../lib/api";
 import CategoryChart from "./CategoryChart";
+import ExpenseSettlementCard from "./ExpenseSettlementCard";
 import type {
   CategorySummary,
   CreateExpenseRequest,
@@ -34,13 +36,16 @@ const CATEGORY_MAP: Record<ExpenseCategory, { label: string; icon: string; bg: s
   MISCELLANEOUS: { label: "Miscellaneous", icon: "📦", bg: "bg-slate-100 text-slate-700 border-slate-200" },
 };
 
+import { useCurrency } from "../../lib/currency";
+
 export default function ExpenseSection({ trip, onTripUpdated }: ExpenseSectionProps) {
+  const { format: formatCurrency } = useCurrency();
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [remainingBudget, setRemainingBudget] = useState<RemainingBudget | null>(null);
   const [categorySummaries, setCategorySummaries] = useState<CategorySummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
+  const [deletingId, setDeletingId] = useState<number | null>(null);
 
   // Modal states
   const [isExpenseModalOpen, setIsExpenseModalOpen] = useState(false);
@@ -71,7 +76,8 @@ export default function ExpenseSection({ trip, onTripUpdated }: ExpenseSectionPr
       setRemainingBudget(budgetData);
       setCategorySummaries(summaryData);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load expenses and budget info.");
+      const msg = err instanceof Error ? err.message : "Failed to load expenses and budget info.";
+      setError(msg);
     } finally {
       setLoading(false);
     }
@@ -102,17 +108,16 @@ export default function ExpenseSection({ trip, onTripUpdated }: ExpenseSectionPr
   const handleExpenseSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!amount || Number(amount) <= 0) {
-      setError("Please enter a valid positive expense amount.");
+      toast.error("Please enter a valid positive expense amount.");
       return;
     }
     if (!date) {
-      setError("Please select a date.");
+      toast.error("Please select a date.");
       return;
     }
 
     setSubmittingExpense(true);
     setError("");
-    setSuccess("");
 
     const payload: CreateExpenseRequest = {
       category,
@@ -124,30 +129,34 @@ export default function ExpenseSection({ trip, onTripUpdated }: ExpenseSectionPr
     try {
       if (editingExpense) {
         await updateExpense(trip.id, editingExpense.id, payload);
-        setSuccess("Expense updated successfully!");
+        toast.success("Expense saved successfully.");
       } else {
         await createExpense(trip.id, payload);
-        setSuccess("Expense added successfully!");
+        toast.success("Expense saved successfully.");
       }
       setIsExpenseModalOpen(false);
       await fetchExpenseData();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to save expense.");
+      const msg = err instanceof Error ? err.message : "Unable to save expense.";
+      toast.error(msg);
+      setError(msg);
     } finally {
       setSubmittingExpense(false);
     }
   };
 
   const handleDeleteExpense = async (expenseId: number) => {
-    if (!confirm("Are you sure you want to delete this expense?")) return;
+    setDeletingId(expenseId);
     setError("");
-    setSuccess("");
     try {
       await deleteExpense(trip.id, expenseId);
-      setSuccess("Expense deleted successfully!");
+      toast.success("Expense deleted.");
       await fetchExpenseData();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to delete expense.");
+      const msg = err instanceof Error ? err.message : "Failed to delete expense.";
+      toast.error(msg);
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -155,13 +164,12 @@ export default function ExpenseSection({ trip, onTripUpdated }: ExpenseSectionPr
     e.preventDefault();
     const parsedBudget = Number(newBudget);
     if (isNaN(parsedBudget) || parsedBudget < 0) {
-      setError("Budget amount must not be negative.");
+      toast.error("Budget amount must not be negative.");
       return;
     }
 
     setSubmittingBudget(true);
     setError("");
-    setSuccess("");
 
     try {
       await updateTrip(trip.id, {
@@ -172,12 +180,14 @@ export default function ExpenseSection({ trip, onTripUpdated }: ExpenseSectionPr
         budget: parsedBudget,
         notes: trip.notes,
       });
-      setSuccess("Trip budget updated successfully!");
+      toast.success("Settings saved.");
       setIsBudgetModalOpen(false);
       if (onTripUpdated) onTripUpdated();
       await fetchExpenseData();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to update budget.");
+      const msg = err instanceof Error ? err.message : "Failed to update budget.";
+      toast.error(msg);
+      setError(msg);
     } finally {
       setSubmittingBudget(false);
     }
@@ -222,11 +232,6 @@ export default function ExpenseSection({ trip, onTripUpdated }: ExpenseSectionPr
       {error && (
         <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm font-semibold text-red-700">
           {error}
-        </div>
-      )}
-      {success && (
-        <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm font-semibold text-emerald-700">
-          {success}
         </div>
       )}
 
@@ -320,6 +325,9 @@ export default function ExpenseSection({ trip, onTripUpdated }: ExpenseSectionPr
         </div>
       </div>
 
+      {/* Group Expense Splitter & Settlement Calculator */}
+      <ExpenseSettlementCard tripId={trip.id} onSettlementUpdated={fetchExpenseData} />
+
       {/* Expenses Table / Cards */}
       <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
         <h3 className="text-lg font-extrabold text-slate-900 mb-4">Expense Records</h3>
@@ -332,15 +340,15 @@ export default function ExpenseSection({ trip, onTripUpdated }: ExpenseSectionPr
         ) : expenses.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-slate-200 py-12 text-center">
             <span className="text-4xl">🧾</span>
-            <h4 className="mt-3 text-base font-extrabold text-slate-900">No Expenses Recorded</h4>
+            <h4 className="mt-3 text-base font-extrabold text-slate-900">No expenses logged yet.</h4>
             <p className="mt-1 text-sm text-slate-500">
-              No expenses have been added to this trip yet.
+              Track your travel spending and group split amounts here.
             </p>
             <button
               onClick={openAddModal}
-              className="mt-4 inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-indigo-700"
+              className="mt-4 inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-indigo-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 active:scale-95"
             >
-              + Add First Expense
+              Add Expense
             </button>
           </div>
         ) : (
@@ -570,13 +578,7 @@ export default function ExpenseSection({ trip, onTripUpdated }: ExpenseSectionPr
   );
 }
 
-function formatCurrency(val: number) {
-  return new Intl.NumberFormat("en-IN", {
-    style: "currency",
-    currency: "INR",
-    maximumFractionDigits: 2,
-  }).format(val || 0);
-}
+
 
 function formatDate(val: string) {
   if (!val) return "";

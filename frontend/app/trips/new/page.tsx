@@ -2,10 +2,11 @@
 
 import AppShell from "../../../components/AppShell";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo, Suspense } from "react";
+import { toast } from "sonner";
 import { createTrip, getDestinations } from "../../../lib/api";
 import type { Destination } from "../../../lib/types";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 import {
   MapPin,
@@ -18,12 +19,37 @@ import {
   CheckCircle2,
   Sparkles,
   Plane,
+  Search,
 } from "lucide-react";
 
 export default function NewTripPage() {
+  return (
+    <Suspense
+      fallback={
+        <AppShell>
+          <div className="max-w-3xl mx-auto rounded-3xl border border-slate-200 bg-white p-12 text-center text-xs font-semibold text-slate-500">
+            <div className="mx-auto mb-3 h-8 w-8 animate-spin rounded-full border-4 border-indigo-600 border-t-transparent" />
+            Loading Trip Planner...
+          </div>
+        </AppShell>
+      }
+    >
+      <NewTripForm />
+    </Suspense>
+  );
+}
+
+function NewTripForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const urlDestinationId = searchParams.get("destinationId");
+
   const [destinations, setDestinations] = useState<Destination[]>([]);
   const [step, setStep] = useState(1);
+
+  // Destination Search & Filter State
+  const [destSearchQuery, setDestSearchQuery] = useState("");
+  const [destCategory, setDestCategory] = useState("All");
 
   // Form State
   const [destinationId, setDestinationId] = useState("");
@@ -39,11 +65,57 @@ export default function NewTripPage() {
   const [error, setError] = useState("");
 
   useEffect(() => {
+    if (urlDestinationId) {
+      setDestinationId(urlDestinationId);
+    }
+  }, [urlDestinationId]);
+
+  useEffect(() => {
     getDestinations()
       .then(setDestinations)
-      .catch((err) => setError(err instanceof Error ? err.message : "Unable to load destinations."))
+      .catch((err) => {
+        const msg = err instanceof Error ? err.message : "Unable to load destinations.";
+        setError(msg);
+        toast.error(msg);
+      })
       .finally(() => setPageLoading(false));
   }, []);
+
+  useEffect(() => {
+    if (destinationId && destinations.length > 0) {
+      const matched = destinations.find((d) => String(d.id) === String(destinationId));
+      if (matched && (!title || title.endsWith("Vacation") || title.endsWith("Adventure"))) {
+        setTitle(`${matched.name} Vacation`);
+      }
+    }
+  }, [destinationId, destinations]);
+
+  const categories = useMemo(() => {
+    const set = new Set<string>();
+    destinations.forEach((d) => {
+      if (d.category) set.add(d.category);
+    });
+    return ["All", ...Array.from(set)];
+  }, [destinations]);
+
+  const filteredDestinations = useMemo(() => {
+    return destinations.filter((dest) => {
+      const query = destSearchQuery.toLowerCase().trim();
+      const matchesCategory =
+        destCategory === "All" ||
+        (dest.category && dest.category.toLowerCase() === destCategory.toLowerCase());
+
+      if (!matchesCategory) return false;
+      if (!query) return true;
+
+      const nameMatch = dest.name?.toLowerCase().includes(query) || false;
+      const cityMatch = dest.city?.toLowerCase().includes(query) || false;
+      const countryMatch = dest.country?.toLowerCase().includes(query) || false;
+      const categoryMatch = dest.category?.toLowerCase().includes(query) || false;
+
+      return nameMatch || cityMatch || countryMatch || categoryMatch;
+    });
+  }, [destinations, destSearchQuery, destCategory]);
 
   const selectedDestination = destinations.find((d) => String(d.id) === String(destinationId));
 
@@ -85,13 +157,16 @@ export default function NewTripPage() {
         notes: notes.trim() ? notes.trim() : null,
       });
 
+      toast.success("Trip created successfully.");
       if (trip && trip.id) {
         router.push(`/trips/${trip.id}`);
       } else {
         router.push("/trips");
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Unable to create trip. Please try again.");
+      const msg = err instanceof Error ? err.message : "Unable to save your trip.";
+      setError(msg);
+      toast.error(msg);
     } finally {
       setLoading(false);
     }
@@ -136,19 +211,103 @@ export default function NewTripPage() {
 
         {/* STEP 1: DESTINATION SELECTION */}
         {step === 1 && (
-          <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
-            <div>
-              <h2 className="text-xl font-extrabold text-[#111827]">Step 1: Where are you going?</h2>
-              <p className="text-xs text-[#6B7280]">Select your dream destination from our catalog.</p>
+          <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} className="space-y-6 pb-24">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-4 rounded-2xl border border-slate-200/80 shadow-2xs">
+              <div>
+                <h2 className="text-xl font-extrabold text-[#111827]">Step 1: Where are you going?</h2>
+                <p className="text-xs text-[#6B7280]">Search and select any destination to build your trip.</p>
+              </div>
+
+              {selectedDestination ? (
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2 rounded-xl bg-emerald-50 px-3.5 py-2 text-xs font-extrabold text-emerald-800 border border-emerald-200 shadow-xs">
+                    <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                    <span>Selected: {selectedDestination.name}</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleNext}
+                    className="flex items-center gap-2 rounded-xl bg-[#4338CA] px-5 py-2.5 text-xs font-bold text-white shadow-md hover:bg-[#3730A3] transition active:scale-95"
+                  >
+                    <span>Next: Select Dates</span>
+                    <ArrowRight className="h-4 w-4" />
+                  </button>
+                </div>
+              ) : (
+                <div className="text-xs font-semibold text-amber-700 bg-amber-50 border border-amber-200 px-3.5 py-2 rounded-xl">
+                  Please click any destination card below to select it.
+                </div>
+              )}
+            </div>
+
+            {/* Interactive Search & Filter Bar */}
+            <div className="space-y-3 rounded-2xl bg-slate-50 p-4 border border-slate-200/80">
+              <div className="relative">
+                <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                <input
+                  type="text"
+                  placeholder="Search destination by name, city, country, or category..."
+                  value={destSearchQuery}
+                  onChange={(e) => setDestSearchQuery(e.target.value)}
+                  className="w-full rounded-xl border border-slate-200 bg-white pl-10 pr-4 py-2.5 text-xs font-semibold text-slate-900 focus:border-indigo-600 focus:outline-none shadow-xs"
+                />
+                {destSearchQuery && (
+                  <button
+                    type="button"
+                    onClick={() => setDestSearchQuery("")}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400 hover:text-slate-700"
+                  >
+                    Clear
+                  </button>
+                )}
+              </div>
+
+              {/* Category Filter Pills */}
+              {categories.length > 1 && (
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <span className="text-[11px] font-bold text-slate-500 mr-1">Categories:</span>
+                  {categories.map((cat) => (
+                    <button
+                      key={cat}
+                      type="button"
+                      onClick={() => setDestCategory(cat)}
+                      className={`rounded-lg px-3 py-1 text-[11px] font-bold transition ${
+                        destCategory.toLowerCase() === cat.toLowerCase()
+                          ? "bg-[#4338CA] text-white shadow-xs"
+                          : "bg-white border border-slate-200 text-slate-600 hover:bg-slate-100"
+                      }`}
+                    >
+                      {cat}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
 
             {pageLoading ? (
               <div className="rounded-2xl border border-[#E5E7EB] bg-white p-12 text-center text-xs font-semibold text-[#6B7280]">
-                Loading destinations...
+                <div className="mx-auto mb-3 h-7 w-7 animate-spin rounded-full border-4 border-[#4338CA] border-t-transparent" />
+                Loading destinations catalog...
+              </div>
+            ) : filteredDestinations.length === 0 ? (
+              <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-8 text-center text-xs text-slate-500">
+                <MapPin className="mx-auto h-8 w-8 text-slate-300 mb-2" />
+                <p className="font-bold text-slate-800">No destinations found for "{destSearchQuery}"</p>
+                <p className="mt-1 text-[11px]">Try clearing filters or searching another keyword.</p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setDestSearchQuery("");
+                    setDestCategory("All");
+                  }}
+                  className="mt-4 rounded-xl bg-indigo-50 px-4 py-2 text-xs font-bold text-indigo-700 hover:bg-indigo-100"
+                >
+                  Reset Filters
+                </button>
               </div>
             ) : (
               <div className="grid gap-3 sm:grid-cols-2">
-                {destinations.map((d) => {
+                {filteredDestinations.map((d) => {
                   const selected = String(d.id) === destinationId;
                   return (
                     <button
@@ -160,12 +319,12 @@ export default function NewTripPage() {
                       }}
                       className={`group relative overflow-hidden rounded-2xl border p-4 text-left transition duration-200 ${
                         selected
-                          ? "border-2 border-[#4338CA] bg-indigo-50/40 shadow-xs"
-                          : "border-[#E5E7EB] bg-white hover:border-[#D1D5DB]"
+                          ? "border-2 border-[#4338CA] bg-indigo-50/50 shadow-md ring-2 ring-indigo-500/20"
+                          : "border-[#E5E7EB] bg-white hover:border-[#D1D5DB] hover:shadow-xs"
                       }`}
                     >
                       <div className="flex items-center gap-3">
-                        <div className="h-14 w-14 shrink-0 overflow-hidden rounded-xl bg-slate-100">
+                        <div className="h-14 w-14 shrink-0 overflow-hidden rounded-xl bg-slate-100 relative">
                           <img
                             src={d.imageUrl || "https://images.unsplash.com/photo-1502602898657-3e91760cbb34?auto=format&fit=crop&w=300&q=80"}
                             alt={d.name}
@@ -173,13 +332,27 @@ export default function NewTripPage() {
                           />
                         </div>
                         <div className="min-w-0 flex-1">
-                          <h3 className="font-bold text-sm text-[#111827]">{d.name}</h3>
-                          <p className="text-xs text-[#6B7280]">{d.country || d.city || "Location"}</p>
+                          <div className="flex items-center gap-2">
+                            <h3 className="font-bold text-sm text-[#111827] truncate">{d.name}</h3>
+                            {d.category && (
+                              <span className="rounded-md bg-indigo-50 px-2 py-0.5 text-[10px] font-extrabold text-indigo-700 shrink-0">
+                                {d.category}
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-xs text-[#6B7280] truncate mt-0.5">
+                            📍 {d.city || d.country || "Global Location"}
+                            {d.country && d.city ? `, ${d.country}` : ""}
+                          </p>
                         </div>
-                        {selected && (
-                          <div className="flex h-6 w-6 items-center justify-center rounded-full bg-[#4338CA] text-white">
+                        {selected ? (
+                          <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[#4338CA] text-white shadow-xs shrink-0">
                             <CheckCircle2 className="h-4 w-4" />
                           </div>
+                        ) : (
+                          <span className="text-xs font-bold text-indigo-600 opacity-0 group-hover:opacity-100 transition shrink-0">
+                            Select →
+                          </span>
                         )}
                       </div>
                     </button>
@@ -198,6 +371,29 @@ export default function NewTripPage() {
                 <ArrowRight className="h-4 w-4" />
               </button>
             </div>
+
+            {/* Floating Sticky Bottom Bar for Step 1 when destination is selected */}
+            {selectedDestination && (
+              <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-4 rounded-2xl bg-[#111827]/95 backdrop-blur-md px-6 py-3.5 text-white shadow-2xl border border-slate-700/50 animate-in fade-in slide-in-from-bottom-5">
+                <div className="flex items-center gap-2.5">
+                  <div className="h-8 w-8 rounded-full bg-emerald-500/20 flex items-center justify-center text-emerald-400">
+                    <CheckCircle2 className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">Destination Selected</p>
+                    <p className="text-xs font-extrabold text-white">{selectedDestination.name}</p>
+                  </div>
+                </div>
+                <div className="h-7 w-[1px] bg-slate-700 mx-1" />
+                <button
+                  type="button"
+                  onClick={handleNext}
+                  className="flex items-center gap-2 rounded-xl bg-[#4338CA] px-5 py-2 text-xs font-bold text-white hover:bg-indigo-600 shadow-lg transition active:scale-95"
+                >
+                  <span>Next: Dates →</span>
+                </button>
+              </div>
+            )}
           </motion.div>
         )}
 

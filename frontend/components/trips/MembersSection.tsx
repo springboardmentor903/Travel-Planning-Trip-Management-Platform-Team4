@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { toast } from "sonner";
 import { addTripMember, changeTripMemberRole, getTripMembers, removeTripMember } from "../../lib/api";
 import type { MembershipRole, TripMemberResponse } from "../../lib/types";
 
@@ -20,7 +21,6 @@ export default function MembersSection({ tripId, ownerId, ownerEmail }: MembersS
   const [members, setMembers] = useState<TripMemberResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [successMsg, setSuccessMsg] = useState("");
 
   // Current user authentication context
   const [currentUser, setCurrentUser] = useState<StoredUser | null>(null);
@@ -58,7 +58,9 @@ export default function MembersSection({ tripId, ownerId, ownerEmail }: MembersS
       const data = await getTripMembers(tripId);
       setMembers(data);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load trip members.");
+      const msg = err instanceof Error ? err.message : "Failed to load trip members.";
+      setError(msg);
+      toast.error(msg);
     } finally {
       setLoading(false);
     }
@@ -88,7 +90,6 @@ export default function MembersSection({ tripId, ownerId, ownerEmail }: MembersS
   const handleInviteSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setInviteError("");
-    setSuccessMsg("");
 
     const emailToSubmit = inviteEmail.trim();
     if (!emailToSubmit) {
@@ -105,21 +106,22 @@ export default function MembersSection({ tripId, ownerId, ownerEmail }: MembersS
     setIsInviting(true);
     try {
       await addTripMember(tripId, emailToSubmit);
-      setSuccessMsg(`Member "${emailToSubmit}" added successfully.`);
+      toast.success(`Invite sent to "${emailToSubmit}".`);
       setInviteEmail("");
       setInviteModalOpen(false);
       await fetchMembers();
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "";
-      if (message.includes("404") || message.toLowerCase().includes("not found")) {
-        setInviteError("No user was found with this email address.");
-      } else if (message.includes("409") || message.toLowerCase().includes("already a member")) {
-        setInviteError("This user is already a member of this trip.");
+      let errText = "Something went wrong. Please try again.";
+      if (message.includes("409") || message.toLowerCase().includes("already a member")) {
+        errText = "This user is already a member of this trip.";
       } else if (message.includes("403") || message.toLowerCase().includes("forbidden") || message.toLowerCase().includes("unauthorized")) {
-        setInviteError("You do not have permission to invite members.");
-      } else {
-        setInviteError(message || "Something went wrong. Please try again.");
+        errText = "You do not have permission to invite members.";
+      } else if (message) {
+        errText = message;
       }
+      setInviteError(errText);
+      toast.error(errText);
     } finally {
       setIsInviting(false);
     }
@@ -130,13 +132,14 @@ export default function MembersSection({ tripId, ownerId, ownerEmail }: MembersS
     if (member.role === newRole) return;
     setUpdatingRoleId(member.userId);
     setError("");
-    setSuccessMsg("");
     try {
       await changeTripMemberRole(tripId, member.userId, newRole);
-      setSuccessMsg(`Updated ${member.name}'s role to ${newRole === "GROUP_ADMIN" ? "Group Admin" : "Member"}.`);
+      toast.success(`Role updated.`);
       await fetchMembers();
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Failed to change member role.");
+      const msg = err instanceof Error ? err.message : "Failed to change member role.";
+      setError(msg);
+      toast.error(msg);
     } finally {
       setUpdatingRoleId(null);
     }
@@ -147,14 +150,15 @@ export default function MembersSection({ tripId, ownerId, ownerEmail }: MembersS
     if (!removeTarget) return;
     setIsRemoving(true);
     setError("");
-    setSuccessMsg("");
     try {
       await removeTripMember(tripId, removeTarget.userId);
-      setSuccessMsg(`Removed ${removeTarget.name} from the trip.`);
+      toast.success(`Member removed.`);
       setRemoveTarget(null);
       await fetchMembers();
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Failed to remove member.");
+      const msg = err instanceof Error ? err.message : "Failed to remove member.";
+      setError(msg);
+      toast.error(msg);
       setRemoveTarget(null);
     } finally {
       setIsRemoving(false);
@@ -194,19 +198,6 @@ export default function MembersSection({ tripId, ownerId, ownerEmail }: MembersS
           )}
         </div>
       </div>
-
-      {/* Alert Notifications */}
-      {successMsg && (
-        <div className="mb-6 flex items-center justify-between rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm font-semibold text-emerald-800">
-          <span>{successMsg}</span>
-          <button
-            onClick={() => setSuccessMsg("")}
-            className="text-xs font-bold uppercase tracking-wider opacity-75 hover:opacity-100"
-          >
-            Dismiss
-          </button>
-        </div>
-      )}
 
       {error && (
         <div className="mb-6 flex items-center justify-between rounded-xl border border-red-200 bg-red-50 p-4 text-sm font-semibold text-red-700">

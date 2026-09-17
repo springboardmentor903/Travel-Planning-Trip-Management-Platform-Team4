@@ -37,14 +37,14 @@ class DestinationServiceTest {
 
     @Test
     void testGetAllDestinations() {
-        when(destinationRepository.findAll()).thenReturn(List.of(destination1, destination2));
+        when(destinationRepository.findByActiveTrue()).thenReturn(List.of(destination1, destination2));
 
         List<DestinationResponse> result = destinationService.getAllDestinations();
 
         assertEquals(2, result.size());
         assertEquals("Paris", result.get(0).getName());
         assertEquals("Tokyo", result.get(1).getName());
-        verify(destinationRepository, times(1)).findAll();
+        verify(destinationRepository, times(1)).findByActiveTrue();
     }
 
     @Test

@@ -3,6 +3,7 @@
 import AppShell from "../../components/AppShell";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import { toast } from "sonner";
 import { getDestinations } from "../../lib/api";
 import type { Destination } from "../../lib/types";
 import MapView from "../../components/MapView";
@@ -21,7 +22,9 @@ export default function DestinationsPage() {
       const data = await getDestinations();
       setDestinations(data || []);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Unable to load destinations.");
+      const msg = err instanceof Error ? err.message : "Unable to load destinations.";
+      setError(msg);
+      toast.error(msg);
     } finally {
       setLoading(false);
     }
@@ -143,12 +146,11 @@ export default function DestinationsPage() {
 
           <div className="grid gap-5 md:grid-cols-3">
             {popularDestinations.map((dest) => (
-              <Link
+              <div
                 key={dest.id}
-                href={`/destinations/${dest.id}`}
                 className="group relative overflow-hidden rounded-3xl border border-slate-200/80 bg-slate-900 shadow-md transition duration-300 hover:-translate-y-1 hover:shadow-xl"
               >
-                <div className="h-48 w-full overflow-hidden">
+                <Link href={`/destinations/${dest.id}`} className="block h-48 w-full overflow-hidden">
                   {dest.imageUrl ? (
                     <img
                       src={dest.imageUrl}
@@ -161,20 +163,30 @@ export default function DestinationsPage() {
                     </div>
                   )}
                   <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/30 to-transparent" />
+                </Link>
+                <div className="absolute bottom-5 left-5 right-5 text-white flex items-end justify-between gap-2 pointer-events-none">
+                  <div className="pointer-events-auto">
+                    {dest.category && (
+                      <span className="inline-block rounded-full bg-indigo-600/90 backdrop-blur-md px-3 py-0.5 text-xs font-extrabold shadow-sm">
+                        {dest.category}
+                      </span>
+                    )}
+                    <Link href={`/destinations/${dest.id}`}>
+                      <h3 className="mt-1.5 text-xl font-black text-white hover:text-indigo-200 transition-colors">{dest.name}</h3>
+                    </Link>
+                    <p className="mt-0.5 text-xs font-bold text-indigo-200 flex items-center gap-1">
+                      <span>📍</span>
+                      <span>{dest.city || dest.country ? `${dest.city || ""}${dest.city && dest.country ? ", " : ""}${dest.country || ""}` : "Global Location"}</span>
+                    </p>
+                  </div>
+                  <Link
+                    href={`/trips/new?destinationId=${dest.id}`}
+                    className="pointer-events-auto rounded-xl bg-white/90 backdrop-blur-md px-3 py-1.5 text-xs font-extrabold text-indigo-950 shadow-md hover:bg-white transition shrink-0"
+                  >
+                    + Plan Trip
+                  </Link>
                 </div>
-                <div className="absolute bottom-5 left-5 right-5 text-white">
-                  {dest.category && (
-                    <span className="inline-block rounded-full bg-indigo-600/90 backdrop-blur-md px-3 py-0.5 text-xs font-extrabold shadow-sm">
-                      {dest.category}
-                    </span>
-                  )}
-                  <h3 className="mt-1.5 text-xl font-black text-white">{dest.name}</h3>
-                  <p className="mt-0.5 text-xs font-bold text-indigo-200 flex items-center gap-1">
-                    <span>📍</span>
-                    <span>{dest.city || dest.country ? `${dest.city || ""}${dest.city && dest.country ? ", " : ""}${dest.country || ""}` : "Global Location"}</span>
-                  </p>
-                </div>
-              </Link>
+              </div>
             ))}
           </div>
         </div>

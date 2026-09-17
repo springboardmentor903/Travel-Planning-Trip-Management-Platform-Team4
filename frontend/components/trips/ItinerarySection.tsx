@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { toast } from "sonner";
 import type { CreateActivityRequest, CreateItineraryDayRequest, ItineraryDay, PlaceInfo, Trip } from "../../lib/types";
 import { createActivity, createItinerary, deleteItinerary, getDestinationPlaces, getItineraries, updateItinerary } from "../../lib/api";
 import ItineraryDayCard from "./ItineraryDayCard";
@@ -34,7 +35,9 @@ export default function ItinerarySection({ trip }: { trip: Trip }) {
       const data = await getItineraries(trip.id);
       setDays(data || []);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load itinerary days.");
+      const msg = err instanceof Error ? err.message : "Failed to load itinerary days.";
+      setError(msg);
+      toast.error(msg);
     } finally {
       setLoading(false);
     }
@@ -60,19 +63,19 @@ export default function ItinerarySection({ trip }: { trip: Trip }) {
 
   const handleSaveDay = async (requestData: CreateItineraryDayRequest) => {
     setIsSavingDay(true);
-    setNotification(null);
     try {
       if (editingDay) {
         await updateItinerary(editingDay.id, requestData);
-        setNotification({ type: "success", message: `Day ${requestData.dayNumber} updated successfully.` });
+        toast.success(`Day ${requestData.dayNumber} updated successfully.`);
       } else {
         await createItinerary(trip.id, requestData);
-        setNotification({ type: "success", message: `Day ${requestData.dayNumber} added to trip itinerary.` });
+        toast.success("Itinerary generated.");
       }
       setDayModalOpen(false);
       setEditingDay(null);
       await loadItineraryDays();
     } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Unable to save itinerary day.");
       throw err;
     } finally {
       setIsSavingDay(false);
@@ -82,17 +85,13 @@ export default function ItinerarySection({ trip }: { trip: Trip }) {
   const handleDeleteDay = async () => {
     if (!deletingDay) return;
     setIsDeletingDay(true);
-    setNotification(null);
     try {
       await deleteItinerary(deletingDay.id);
-      setNotification({ type: "success", message: `Day ${deletingDay.dayNumber} removed.` });
+      toast.success(`Day ${deletingDay.dayNumber} removed.`);
       setDeletingDay(null);
       await loadItineraryDays();
     } catch (err) {
-      setNotification({
-        type: "error",
-        message: err instanceof Error ? err.message : "Failed to delete itinerary day.",
-      });
+      toast.error(err instanceof Error ? err.message : "Failed to delete itinerary day.");
     } finally {
       setIsDeletingDay(false);
     }
@@ -303,7 +302,7 @@ export default function ItinerarySection({ trip }: { trip: Trip }) {
             <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-indigo-50 text-3xl">
               📅
             </div>
-            <h3 className="mt-4 text-lg font-black text-slate-900">No itinerary days created yet</h3>
+            <h3 className="mt-4 text-lg font-black text-slate-900">No itinerary yet.</h3>
             <p className="mt-1 text-xs text-slate-500 max-w-sm mx-auto">
               Build your travel schedule day-by-day or pick an attraction above to get started.
             </p>
@@ -312,9 +311,9 @@ export default function ItinerarySection({ trip }: { trip: Trip }) {
                 setEditingDay(null);
                 setDayModalOpen(true);
               }}
-              className="mt-5 inline-flex rounded-xl bg-indigo-600 px-5 py-2.5 text-xs font-extrabold text-white shadow-lg shadow-indigo-200 hover:bg-indigo-700 transition"
+              className="mt-5 inline-flex rounded-xl bg-indigo-600 px-5 py-2.5 text-xs font-extrabold text-white shadow-lg shadow-indigo-200 hover:bg-indigo-700 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 active:scale-95"
             >
-              + Add Day 1
+              Generate Itinerary
             </button>
           </div>
         ) : (
@@ -323,11 +322,13 @@ export default function ItinerarySection({ trip }: { trip: Trip }) {
               <ItineraryDayCard
                 key={day.id}
                 day={day}
+                trip={trip}
                 onEditDay={(d) => {
                   setEditingDay(d);
                   setDayModalOpen(true);
                 }}
                 onDeleteDay={(d) => setDeletingDay(d)}
+                onNotification={(msg) => setNotification({ type: "success", message: msg })}
               />
             ))}
           </div>

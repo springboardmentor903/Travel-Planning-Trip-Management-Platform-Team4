@@ -38,6 +38,9 @@ class SecurityPrivilegeEscalationTest {
     @Mock
     private TripAccessService tripAccessService;
 
+    @Mock
+    private NotificationService notificationService;
+
     @InjectMocks
     private TripMembershipService tripMembershipService;
 

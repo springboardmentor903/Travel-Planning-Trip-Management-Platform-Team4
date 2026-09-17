@@ -44,6 +44,9 @@ class ExpenseServiceTest {
     private TripMembershipRepository tripMembershipRepository;
 
     @Mock
+    private NotificationService notificationService;
+
+    @Mock
     private TripAccessService tripAccessService;
 
     @InjectMocks
@@ -57,10 +60,10 @@ class ExpenseServiceTest {
     @BeforeEach
     void setUp() {
         Role role = new Role(1, "TRAVELER");
-        owner = new User(1, "Owner", "owner@example.com", "hash", role, false, LocalDateTime.now());
-        member = new User(2, "Member", "member@example.com", "hash", role, false, LocalDateTime.now());
-        Destination destination = new Destination(1, "Rome", "Italy", "Rome", "Desc", "url", "City");
-        trip = new Trip(100, "Rome Trip", owner, destination, LocalDate.now().plusDays(1), LocalDate.now().plusDays(5), 1000.0, "Notes", LocalDateTime.now());
+        owner = new User(1, "Owner", "owner@example.com", "hash", role, false, true, LocalDateTime.now());
+        member = new User(2, "Member", "member@example.com", "hash", role, false, true, LocalDateTime.now());
+        Destination destination = new Destination(1, "Rome", "Italy", "Rome", "Desc", "url", "City", 0.0, 0.0, true, 0.0, "All");
+        trip = new Trip(100, "Rome Trip", owner, destination, LocalDate.now().plusDays(1), LocalDate.now().plusDays(5), 1000.0, "Notes", TripStatus.PLANNED, LocalDateTime.now());
         expense = new Expense(1, trip, null, member, ExpenseCategory.FOOD, BigDecimal.valueOf(50.0), LocalDate.now(), null, LocalDateTime.now());
     }
 
